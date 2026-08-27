@@ -240,6 +240,15 @@ li.scene .binder-row {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  border-left: 2px solid transparent;
+}
+
+.editor + .editor {
+  border-left: 1px solid var(--border);
+}
+
+.editor.pane-active {
+  border-left-color: var(--accent);
 }
 
 .editor.empty {
@@ -247,25 +256,101 @@ li.scene .binder-row {
   align-items: center;
 }
 
-.editor textarea {
+button.on {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+}
+
+.toolbar {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.toolbar button {
+  min-width: 2rem;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.85rem;
+}
+
+.toolbar .sep {
+  width: 1px;
+  height: 1.2rem;
+  background: var(--border);
+  margin: 0 0.25rem;
+}
+
+.editor-content {
   flex: 1;
-  resize: none;
-  border: none;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.editor-content .ProseMirror {
+  min-height: 100%;
   outline: none;
-  padding: 2rem clamp(1rem, 10%, 6rem);
+  padding: 2rem clamp(1rem, 10%, 6rem) 3rem;
   font-family: Georgia, "Times New Roman", serif;
   font-size: 1.05rem;
   line-height: 1.7;
-  background: transparent;
-  color: inherit;
+  max-width: 48rem;
+  margin: 0 auto;
+  box-sizing: content-box;
+}
+
+/* Typewriter-Modus: Platz, damit die Cursorzeile mittig bleiben kann. */
+.editor-content.typewriter .ProseMirror {
+  padding-top: 45vh;
+  padding-bottom: 45vh;
 }
 
 .statusbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
   padding: 0.25rem 0.75rem;
   border-top: 1px solid var(--border);
   background: var(--panel);
   font-size: 0.8rem;
-  opacity: 0.8;
+  opacity: 0.9;
+  flex-wrap: wrap;
+}
+
+.statusbar .spacer {
+  flex: 1;
+}
+
+.statusbar select {
+  font-size: 0.8rem;
+  padding: 0.05rem 0.2rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--panel);
+  color: inherit;
+}
+
+.statusbar button {
+  padding: 0.1rem 0.4rem;
+  font-size: 0.8rem;
+}
+
+/* --- Fokusmodus --- */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.app.focus-mode .titlebar,
+.app.focus-mode .binder,
+.app.focus-mode .toolbar {
+  display: none;
 }
 
 /* --- Banner --- */

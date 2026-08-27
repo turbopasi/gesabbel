@@ -28,7 +28,10 @@ export function Binder() {
 }
 
 function BinderItem({ node }: { node: BinderNode }) {
-  const { currentSceneId, selectScene, createNode, renameNode, deleteNode } = useStore();
+  const { selectScene, createNode, renameNode, deleteNode } = useStore();
+  const isOpen = useStore(
+    (s) => s.panes.left.sceneId === node.id || s.panes.right.sceneId === node.id,
+  );
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(node.title);
 
@@ -52,7 +55,7 @@ function BinderItem({ node }: { node: BinderNode }) {
   return (
     <li className={node.kind}>
       <div
-        className={`binder-row ${node.id === currentSceneId ? "active" : ""}`}
+        className={`binder-row ${isOpen ? "active" : ""}`}
         onClick={() => {
           if (node.kind === "scene") void selectScene(node.id);
         }}
