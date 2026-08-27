@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { api } from "./api";
+import { api, sceneRelPath } from "./api";
 import { loadNormVariant, saveNormVariant, type NormVariant } from "./stats";
 import { findNode } from "./tree";
 import type { NodeKind, ProjectInfo } from "./types";
@@ -100,6 +100,15 @@ interface Store {
   checkExternalChanges: () => Promise<void>;
   reloadProject: () => Promise<void>;
   clearError: () => void;
+
+  /** Szene, deren Verlauf gerade angezeigt wird (null = Modal geschlossen). */
+  historyFor: string | null;
+  setHistoryFor: (sceneId: string | null) => void;
+  /** Kurzes Feedback nach manuellem Sicherungspunkt (Titelleiste). */
+  snapshotNotice: string | null;
+  /** Sicherungspunkt über das ganze Projekt; ohne message automatisch (still). */
+  takeSnapshot: (message?: string) => Promise<void>;
+  restoreVersion: (sceneId: string, commitId: string) => Promise<void>;
 }
 
 export const useStore = create<Store>((set, get) => {
@@ -156,9 +165,11 @@ export const useStore = create<Store>((set, get) => {
 
     closeProject: async () => {
       await get().flushAll();
+      // Letzten Stand sichern, bevor das Projekt zugeht.
+      await api.snapshot("Automatischer Sicherungspunkt (Projekt geschlossen)").catch(() => {});
       await api.closeProject().catch(() => {});
       resetView(null);
-      set({ focusMode: false });
+      set({ focusMode: false, historyFor: null });
     },
 
     selectScene: async (id) => {
@@ -389,5 +400,49 @@ export const useStore = create<Store>((set, get) => {
     },
 
     clearError: () => set({ error: null }),
+
+    historyFor: null,
+    setHistoryFor: (sceneId) => set({ historyFor: sceneId }),
+
+    snapshotNotice: null,
+
+    takeSnapshot: async (message) => {
+      if (!get().project) return;
+      await get().flushAll();
+      try {
+        const committed = await api.snapshot(message ?? null);
+        if (message) {
+          set({
+            snapshotNotice: committed
+              ? "✓ Sicherungspunkt gesetzt"
+              : "Keine Änderungen seit dem letzten Sicherungspunkt",
+          });
+          setTimeout(() => set({ snapshotNotice: null }), 4000);
+        }
+      } catch (e) {
+        // Automatische Sicherungen dürfen den Schreibfluss nicht stören.
+        if (message) fail(e);
+      }
+    },
+
+    restoreVersion: async (sceneId, commitId) => {
+      await get().flushAll();
+      try {
+        const content = await api.restoreVersion(commitId, sceneRelPath(sceneId));
+        for (const paneId of ["left", "right"] as PaneId[]) {
+          const pane = get().panes[paneId];
+          if (pane.sceneId === sceneId) {
+            patchPane(paneId, {
+              content,
+              saveState: "saved",
+              loadCounter: pane.loadCounter + 1,
+            });
+          }
+        }
+        set({ historyFor: null });
+      } catch (e) {
+        fail(e);
+      }
+    },
   };
 });

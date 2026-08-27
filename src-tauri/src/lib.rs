@@ -1,6 +1,7 @@
 mod project;
 mod research;
 mod search;
+mod versioning;
 
 use project::AppState;
 
@@ -36,6 +37,10 @@ pub fn run() {
             research::load_timeline,
             research::save_timeline,
             search::search_project,
+            versioning::snapshot,
+            versioning::list_history,
+            versioning::get_version,
+            versioning::restore_version,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

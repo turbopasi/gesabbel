@@ -914,6 +914,153 @@ button.on {
   text-decoration: underline;
 }
 
+/* --- Verlauf (Ebene C) --- */
+
+.snapshot-notice {
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
+.history {
+  width: min(64rem, 94vw);
+  max-height: 78vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.history-header .spacer,
+.history-diff-actions .spacer {
+  flex: 1;
+}
+
+.history-error {
+  margin: 0;
+  padding: 0.4rem 0.75rem;
+  background: #c0392b;
+  color: white;
+  font-size: 0.85rem;
+}
+
+.history-split {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.history-list {
+  width: 17rem;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 0.4rem;
+}
+
+.history-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.history-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.history-list li:hover {
+  background: rgba(128, 128, 128, 0.15);
+}
+
+.history-list li.selected {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.history-list li.selected .muted {
+  color: inherit;
+}
+
+.history-time {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.history-msg {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-diff {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 0.6rem 0.75rem;
+  gap: 0.5rem;
+  overflow: hidden;
+}
+
+.history-diff > p {
+  margin: auto;
+}
+
+.history-diff-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.diff {
+  flex: 1;
+  overflow: auto;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.diff-line {
+  padding: 0 0.5rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.diff-sign {
+  user-select: none;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+.diff-add {
+  background: rgba(39, 174, 96, 0.18);
+}
+
+.diff-del {
+  background: rgba(192, 57, 43, 0.18);
+}
+
 /* --- Fokusmodus --- */
 
 .app {

@@ -7,6 +7,7 @@ import type {
   ProjectInfo,
   SearchHit,
   TimelineEvent,
+  VersionInfo,
   WriteResult,
 } from "./types";
 
@@ -61,4 +62,16 @@ export const api = {
     invoke<TimelineEvent[]>("save_timeline", { events }),
 
   searchProject: (query: string) => invoke<SearchHit[]>("search_project", { query }),
+
+  /** Sicherungspunkt über das ganze Projekt; true = es gab etwas zu sichern. */
+  snapshot: (message: string | null = null) => invoke<boolean>("snapshot", { message }),
+  listHistory: (rel: string) => invoke<VersionInfo[]>("list_history", { rel }),
+  getVersion: (commitId: string, rel: string) =>
+    invoke<string>("get_version", { commitId, rel }),
+  /** Stellt eine Version wieder her und liefert den Inhalt zurück. */
+  restoreVersion: (commitId: string, rel: string) =>
+    invoke<string>("restore_version", { commitId, rel }),
 };
+
+/** Projektrelativer Pfad einer Szenendatei (muss zum Rust-Backend passen). */
+export const sceneRelPath = (id: string) => `manuscript/${id}.md`;

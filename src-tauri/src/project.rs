@@ -347,6 +347,8 @@ pub fn create_project(
     };
     project.write_meta()?;
     project.snapshot_mtimes();
+    // Ebene C: Versionierung ab dem ersten Moment.
+    crate::versioning::ensure_repo(&project.root, &project.meta.author, "Projekt angelegt")?;
     let info = project.info();
     *state.0.lock().map_err(|_| "State-Lock vergiftet")? = Some(project);
     Ok(info)
@@ -378,6 +380,12 @@ pub fn open_project(path: String, state: tauri::State<AppState>) -> Result<Proje
         search_dirty: true,
     };
     project.snapshot_mtimes();
+    // Ebene C: Repo bei Altprojekten nachrüsten; externen Stand als Basis sichern.
+    crate::versioning::ensure_repo(
+        &project.root,
+        &project.meta.author,
+        "Automatischer Sicherungspunkt (Projekt geöffnet)",
+    )?;
     let info = project.info();
     *state.0.lock().map_err(|_| "State-Lock vergiftet")? = Some(project);
     Ok(info)

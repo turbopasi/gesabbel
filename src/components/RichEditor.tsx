@@ -138,6 +138,8 @@ function Toolbar({ editor }: { editor: Editor }) {
 
 function StatusBar({ editor, paneId }: { editor: Editor; paneId: PaneId }) {
   const saveState = useStore((s) => s.panes[paneId].saveState);
+  const sceneId = useStore((s) => s.panes[paneId].sceneId);
+  const setHistoryFor = useStore((s) => s.setHistoryFor);
   const normVariant = useStore((s) => s.normVariant);
   const setNormVariant = useStore((s) => s.setNormVariant);
   const typewriter = useStore((s) => s.typewriter);
@@ -184,6 +186,12 @@ function StatusBar({ editor, paneId }: { editor: Editor; paneId: PaneId }) {
         onClick={toggleTypewriter}
       >
         ⌨
+      </button>
+      <button
+        title="Verlauf dieser Szene: frühere Versionen ansehen und wiederherstellen"
+        onClick={() => sceneId && setHistoryFor(sceneId)}
+      >
+        🕘 Verlauf
       </button>
     </footer>
   );

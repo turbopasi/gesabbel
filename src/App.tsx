@@ -7,6 +7,7 @@ import { RichEditor } from "./components/RichEditor";
 import { Corkboard } from "./components/Corkboard";
 import { QuickNav } from "./components/QuickNav";
 import { Research } from "./components/Research";
+import { HistoryOverlay } from "./components/HistoryPanel";
 import "./App.css";
 
 function App() {
@@ -37,6 +38,8 @@ function App() {
       } else if (e.ctrlKey && !e.shiftKey && e.code === "KeyK") {
         e.preventDefault();
         if (s.project) s.setQuickNavOpen(!s.quickNavOpen);
+      } else if (e.key === "Escape" && s.historyFor) {
+        s.setHistoryFor(null);
       } else if (e.key === "Escape" && s.quickNavOpen) {
         s.setQuickNavOpen(false);
       } else if (e.key === "Escape" && s.focusMode) {
@@ -45,6 +48,13 @@ function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Ebene C: automatischer Sicherungspunkt alle 10 Minuten (Backend
+  // committet nur, wenn sich seit dem letzten tatsächlich etwas geändert hat).
+  useEffect(() => {
+    const timer = setInterval(() => void useStore.getState().takeSnapshot(), 10 * 60 * 1000);
+    return () => clearInterval(timer);
   }, []);
 
   return (
@@ -59,6 +69,7 @@ function App() {
       <ConflictBanner paneId="right" />
       <ExternalChangesBanner />
       <QuickNav />
+      <HistoryOverlay />
       {project ? <MainView /> : <StartScreen />}
     </div>
   );
@@ -72,6 +83,8 @@ function MainView() {
   const closeProject = useStore((s) => s.closeProject);
   const toggleSplit = useStore((s) => s.toggleSplit);
   const toggleFocusMode = useStore((s) => s.toggleFocusMode);
+  const takeSnapshot = useStore((s) => s.takeSnapshot);
+  const snapshotNotice = useStore((s) => s.snapshotNotice);
 
   return (
     <div className="main-layout">
@@ -95,6 +108,13 @@ function MainView() {
             </button>
           </>
         )}
+        {snapshotNotice && <span className="small snapshot-notice">{snapshotNotice}</span>}
+        <button
+          title="Aktuellen Stand des ganzen Projekts im Verlauf sichern"
+          onClick={() => void takeSnapshot("Manueller Sicherungspunkt")}
+        >
+          Sicherungspunkt
+        </button>
         <button onClick={() => void closeProject()}>Projekt schließen</button>
       </header>
       {view === "research" ? (

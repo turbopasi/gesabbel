@@ -64,6 +64,12 @@ export interface SearchHit {
   snippet: string;
 }
 
+export interface VersionInfo {
+  commitId: string;
+  timestampMs: number;
+  message: string;
+}
+
 export const STATUS_LABEL: Record<NodeStatus, string> = {
   draft: "Entwurf",
   revision: "Überarbeitung",
