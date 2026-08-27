@@ -122,6 +122,7 @@ function BinderItem({ node }: { node: BinderNode }) {
         draggable={!editing}
         onDragStart={(e) => {
           draggedId = node.id;
+          e.dataTransfer.setData("text/plain", node.id);
           e.dataTransfer.effectAllowed = "move";
           e.stopPropagation();
         }}

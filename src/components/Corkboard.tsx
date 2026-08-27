@@ -99,6 +99,7 @@ function Card({ node, parentId }: { node: BinderNode; parentId: string }) {
       draggable={synopsisDraft === null}
       onDragStart={(e) => {
         draggedCardId = node.id;
+        e.dataTransfer.setData("text/plain", node.id);
         e.dataTransfer.effectAllowed = "move";
       }}
       onDragEnd={() => {
