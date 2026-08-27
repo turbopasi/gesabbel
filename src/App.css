@@ -579,6 +579,341 @@ button.on {
   font-size: 0.8rem;
 }
 
+/* --- Recherche --- */
+
+.research {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.research-tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.4rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.research-split {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.research-list {
+  width: 230px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  background: var(--panel);
+  overflow-y: auto;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.research-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.research-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.3rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  gap: 0.25rem;
+}
+
+.research-list li:hover {
+  background: rgba(128, 128, 128, 0.15);
+}
+
+.research-list li.selected {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.research-list li .row-delete {
+  visibility: hidden;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.3rem;
+}
+
+.research-list li:hover .row-delete {
+  visibility: visible;
+}
+
+.research-detail {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.research-detail.empty {
+  justify-content: center;
+  align-items: center;
+}
+
+.detail-header {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.detail-name {
+  flex: 1;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.detail-image-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.detail-image {
+  max-width: 140px;
+  max-height: 140px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  object-fit: cover;
+}
+
+.detail-description {
+  font: inherit;
+  min-height: 7rem;
+  resize: vertical;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+}
+
+.field-row {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.field-row input:first-child {
+  width: 11rem;
+}
+
+.field-row input:nth-child(2) {
+  flex: 1;
+}
+
+.add-field {
+  align-self: flex-start;
+}
+
+.scene-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--panel);
+}
+
+.chip-label {
+  border: none;
+  background: none;
+  padding: 0.15rem 0.3rem 0.15rem 0.6rem;
+  color: var(--accent);
+}
+
+.chip-remove {
+  border: none;
+  background: none;
+  padding: 0.15rem 0.5rem 0.15rem 0.2rem;
+  opacity: 0.6;
+}
+
+.chip-remove:hover {
+  opacity: 1;
+}
+
+.chips select {
+  font-size: 0.8rem;
+  padding: 0.2rem;
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  max-width: 14rem;
+}
+
+/* Notizen */
+
+.note-editor {
+  padding: 0;
+  gap: 0;
+}
+
+.note-content {
+  flex: 1;
+  resize: none;
+  border: none;
+  outline: none;
+  padding: 1.5rem clamp(1rem, 8%, 4rem);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1rem;
+  line-height: 1.6;
+  background: transparent;
+  color: inherit;
+}
+
+/* Zeitstrahl */
+
+.timeline {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem;
+}
+
+.timeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.timeline-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.timeline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+
+.timeline-list::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--border);
+}
+
+.timeline-event {
+  position: relative;
+  padding-left: 2rem;
+  margin-bottom: 1rem;
+}
+
+.timeline-marker {
+  position: absolute;
+  left: 0;
+  top: 0.8rem;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 3px solid var(--panel);
+}
+
+.timeline-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  padding: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-width: 44rem;
+}
+
+.timeline-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.event-when {
+  font-size: 0.8rem;
+  opacity: 0.8;
+  border: none;
+  background: transparent;
+  padding: 0.1rem 0;
+  flex: 1;
+}
+
+.timeline-actions {
+  display: flex;
+  gap: 0.2rem;
+}
+
+.timeline-actions button {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+}
+
+.event-title {
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  padding: 0.1rem 0;
+}
+
+.event-description {
+  font: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+  min-height: 3rem;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: inherit;
+}
+
+.quicknav .snippet {
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 55%;
+}
+
+.quicknav .snippet b {
+  color: var(--accent);
+}
+
+.quicknav li.selected .snippet b {
+  color: inherit;
+  text-decoration: underline;
+}
+
 /* --- Fokusmodus --- */
 
 .app {

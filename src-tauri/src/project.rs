@@ -88,6 +88,8 @@ pub struct OpenProject {
     /// Letzter bekannter mtime (ms) pro projektrelativer Datei — Grundlage
     /// der Erkennung externer Änderungen (Dropbox, zweite Maschine, …).
     pub known_mtimes: HashMap<String, u64>,
+    /// true, wenn sich seit dem letzten Suchindex-Aufbau etwas geändert hat.
+    pub search_dirty: bool,
 }
 
 #[derive(Default)]
@@ -114,7 +116,7 @@ pub enum WriteResult {
 // Hilfsfunktionen
 // ---------------------------------------------------------------------------
 
-fn mtime_ms(path: &Path) -> Option<u64> {
+pub(crate) fn mtime_ms(path: &Path) -> Option<u64> {
     fs::metadata(path)
         .and_then(|m| m.modified())
         .ok()
@@ -137,7 +139,7 @@ fn validate_id(id: &str) -> Result<(), String> {
     }
 }
 
-fn make_id(title: &str) -> String {
+pub(crate) fn make_id(title: &str) -> String {
     let slug: String = title
         .to_lowercase()
         .chars()
@@ -166,7 +168,11 @@ fn make_id(title: &str) -> String {
     }
 }
 
-fn scene_rel_path(id: &str) -> String {
+pub(crate) fn validate_id_pub(id: &str) -> Result<(), String> {
+    validate_id(id)
+}
+
+pub(crate) fn scene_rel_path(id: &str) -> String {
     format!("manuscript/{id}.md")
 }
 
@@ -207,7 +213,7 @@ fn remove_node(nodes: &mut Vec<BinderNode>, id: &str) -> Option<BinderNode> {
     None
 }
 
-fn collect_scene_ids(node: &BinderNode, out: &mut Vec<String>) {
+pub(crate) fn collect_scene_ids(node: &BinderNode, out: &mut Vec<String>) {
     if node.kind == NodeKind::Scene {
         out.push(node.id.clone());
     }
@@ -224,18 +230,24 @@ fn is_descendant(nodes: &[BinderNode], ancestor_id: &str, id: &str) -> bool {
 }
 
 impl OpenProject {
-    fn abs(&self, rel: &str) -> PathBuf {
+    pub(crate) fn abs(&self, rel: &str) -> PathBuf {
         self.root.join(rel)
     }
 
-    fn write_meta(&mut self) -> Result<(), String> {
+    /// Merkt sich den aktuellen mtime einer Datei als "bekannt".
+    pub(crate) fn note_mtime(&mut self, rel: &str) {
+        if let Some(mt) = mtime_ms(&self.abs(rel)) {
+            self.known_mtimes.insert(rel.into(), mt);
+        }
+    }
+
+    pub(crate) fn write_meta(&mut self) -> Result<(), String> {
         let json = serde_json::to_string_pretty(&self.meta)
             .map_err(|e| format!("Serialisierung fehlgeschlagen: {e}"))?;
         let path = self.abs(PROJECT_FILE);
         fs::write(&path, json).map_err(|e| format!("project.json schreiben: {e}"))?;
-        if let Some(mt) = mtime_ms(&path) {
-            self.known_mtimes.insert(PROJECT_FILE.into(), mt);
-        }
+        self.note_mtime(PROJECT_FILE);
+        self.search_dirty = true;
         Ok(())
     }
 
@@ -246,13 +258,13 @@ impl OpenProject {
             collect_scene_ids(n, &mut ids);
         }
         for id in ids {
-            let rel = scene_rel_path(&id);
-            if let Some(mt) = mtime_ms(&self.abs(&rel)) {
-                self.known_mtimes.insert(rel, mt);
-            }
+            self.note_mtime(&scene_rel_path(&id));
         }
-        if let Some(mt) = mtime_ms(&self.abs(PROJECT_FILE)) {
-            self.known_mtimes.insert(PROJECT_FILE.into(), mt);
+        self.note_mtime(PROJECT_FILE);
+        self.note_mtime("timeline.json");
+        self.note_mtime(crate::research::NOTES_INDEX);
+        for note in crate::research::list_note_infos(self) {
+            self.note_mtime(&crate::research::note_rel_path(&note.id));
         }
     }
 
@@ -264,7 +276,7 @@ impl OpenProject {
     }
 }
 
-fn with_project<T>(
+pub(crate) fn with_project<T>(
     state: &tauri::State<AppState>,
     f: impl FnOnce(&mut OpenProject) -> Result<T, String>,
 ) -> Result<T, String> {
@@ -331,6 +343,7 @@ pub fn create_project(
         root,
         meta,
         known_mtimes: HashMap::new(),
+        search_dirty: true,
     };
     project.write_meta()?;
     project.snapshot_mtimes();
@@ -362,6 +375,7 @@ pub fn open_project(path: String, state: tauri::State<AppState>) -> Result<Proje
         root,
         meta,
         known_mtimes: HashMap::new(),
+        search_dirty: true,
     };
     project.snapshot_mtimes();
     let info = project.info();
@@ -416,6 +430,7 @@ pub fn write_scene(
         if let Some(mt) = mtime_ms(&path) {
             p.known_mtimes.insert(rel, mt);
         }
+        p.search_dirty = true;
         Ok(WriteResult::Ok)
     })
 }

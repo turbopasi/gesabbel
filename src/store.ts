@@ -6,6 +6,7 @@ import type { NodeKind, ProjectInfo } from "./types";
 
 export type SaveState = "saved" | "dirty" | "saving" | "conflict";
 export type PaneId = "left" | "right";
+export type ResearchTab = "characters" | "locations" | "notes" | "timeline";
 
 export interface Pane {
   sceneId: string | null;
@@ -72,6 +73,16 @@ interface Store {
   ) => Promise<void>;
   quickNavOpen: boolean;
   setQuickNavOpen: (open: boolean) => void;
+  /** Hauptansicht: Schreiben (Panes) oder Recherche (Personen/Orte/Notizen/Zeitstrahl). */
+  view: "write" | "research";
+  setView: (view: "write" | "research") => void;
+  researchTab: ResearchTab;
+  setResearchTab: (tab: ResearchTab) => void;
+  /** Ausgewählter Eintrag pro Recherche-Tab (Notizen, Personen, Orte). */
+  researchSelected: Record<string, string | null>;
+  setResearchSelected: (tab: ResearchTab, id: string | null) => void;
+  /** Öffnet einen Recherche-Eintrag (z. B. aus der Suche heraus). */
+  openResearchItem: (tab: ResearchTab, id: string) => void;
   setContent: (paneId: PaneId, content: string) => void;
   flushPane: (paneId: PaneId) => Promise<void>;
   flushAll: () => Promise<void>;
@@ -151,6 +162,7 @@ export const useStore = create<Store>((set, get) => {
     },
 
     selectScene: async (id) => {
+      set({ view: "write" });
       const paneId = get().activePane;
       const pane = get().panes[paneId];
       if (pane.sceneId === id && !pane.corkboardId) return;
@@ -170,6 +182,7 @@ export const useStore = create<Store>((set, get) => {
     },
 
     selectChapter: async (id) => {
+      set({ view: "write" });
       const paneId = get().activePane;
       if (get().panes[paneId].corkboardId === id) return;
       await get().flushPane(paneId);
@@ -191,6 +204,24 @@ export const useStore = create<Store>((set, get) => {
 
     quickNavOpen: false,
     setQuickNavOpen: (open) => set({ quickNavOpen: open }),
+
+    view: "write",
+    setView: (view) => {
+      // Beim Verlassen der Schreibansicht offene Änderungen sichern.
+      if (view === "research") void get().flushAll();
+      set({ view });
+    },
+    researchTab: "characters",
+    setResearchTab: (tab) => set({ researchTab: tab }),
+    researchSelected: {},
+    setResearchSelected: (tab, id) =>
+      set((s) => ({ researchSelected: { ...s.researchSelected, [tab]: id } })),
+    openResearchItem: (tab, id) =>
+      set((s) => ({
+        view: "research",
+        researchTab: tab,
+        researchSelected: { ...s.researchSelected, [tab]: id },
+      })),
 
     setContent: (paneId, content) => {
       patchPane(paneId, { content, saveState: "dirty" });

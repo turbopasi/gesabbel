@@ -6,6 +6,7 @@ import { Binder } from "./components/Binder";
 import { RichEditor } from "./components/RichEditor";
 import { Corkboard } from "./components/Corkboard";
 import { QuickNav } from "./components/QuickNav";
+import { Research } from "./components/Research";
 import "./App.css";
 
 function App() {
@@ -66,6 +67,8 @@ function App() {
 function MainView() {
   const project = useStore((s) => s.project)!;
   const splitOpen = useStore((s) => s.splitOpen);
+  const view = useStore((s) => s.view);
+  const setView = useStore((s) => s.setView);
   const closeProject = useStore((s) => s.closeProject);
   const toggleSplit = useStore((s) => s.toggleSplit);
   const toggleFocusMode = useStore((s) => s.toggleFocusMode);
@@ -75,19 +78,34 @@ function MainView() {
       <header className="titlebar">
         <span className="project-title">{project.meta.title}</span>
         <span className="muted small">{project.root}</span>
-        <button className={splitOpen ? "on" : ""} onClick={() => void toggleSplit()}>
-          Split
+        <button
+          className={view === "research" ? "on" : ""}
+          title="Personen, Orte, Notizen, Zeitstrahl"
+          onClick={() => setView(view === "research" ? "write" : "research")}
+        >
+          Recherche
         </button>
-        <button title="Fokusmodus (Strg+Umschalt+F)" onClick={toggleFocusMode}>
-          Fokus
-        </button>
+        {view === "write" && (
+          <>
+            <button className={splitOpen ? "on" : ""} onClick={() => void toggleSplit()}>
+              Split
+            </button>
+            <button title="Fokusmodus (Strg+Umschalt+F)" onClick={toggleFocusMode}>
+              Fokus
+            </button>
+          </>
+        )}
         <button onClick={() => void closeProject()}>Projekt schließen</button>
       </header>
-      <div className="panes">
-        <Binder />
-        <PaneView paneId="left" />
-        {splitOpen && <PaneView paneId="right" />}
-      </div>
+      {view === "research" ? (
+        <Research />
+      ) : (
+        <div className="panes">
+          <Binder />
+          <PaneView paneId="left" />
+          {splitOpen && <PaneView paneId="right" />}
+        </div>
+      )}
     </div>
   );
 }

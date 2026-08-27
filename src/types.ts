@@ -28,6 +28,42 @@ export interface ProjectInfo {
 
 export type WriteResult = { status: "ok" } | { status: "conflict" };
 
+export type EntityKind = "characters" | "locations";
+
+export interface EntityField {
+  label: string;
+  value: string;
+}
+
+export interface Entity {
+  id: string;
+  name: string;
+  description?: string;
+  fields?: EntityField[];
+  sceneIds?: string[];
+  image?: string | null;
+}
+
+export interface NoteInfo {
+  id: string;
+  title: string;
+}
+
+export interface TimelineEvent {
+  id: string;
+  title: string;
+  when?: string;
+  description?: string;
+  sceneIds?: string[];
+}
+
+export interface SearchHit {
+  kind: "scene" | "note" | "character" | "location" | "event";
+  id: string;
+  title: string;
+  snippet: string;
+}
+
 export const STATUS_LABEL: Record<NodeStatus, string> = {
   draft: "Entwurf",
   revision: "Überarbeitung",

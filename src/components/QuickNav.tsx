@@ -1,11 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { api } from "../api";
 import { useStore } from "../store";
 import { flattenTree } from "../tree";
-import type { BinderNode } from "../types";
+import type { BinderNode, SearchHit } from "../types";
 
 /** Stabile Referenz — `?? []` im Selector würde jedes Mal ein neues Array
  *  liefern und eine Endlos-Render-Schleife auslösen. */
 const NO_BINDER: BinderNode[] = [];
+
+const KIND_ICON: Record<SearchHit["kind"], string> = {
+  scene: "📄",
+  note: "🗒",
+  character: "👤",
+  location: "📍",
+  event: "🕑",
+};
+
+type Item =
+  | { type: "node"; id: string; kind: "chapter" | "scene"; title: string; sub: string }
+  | { type: "hit"; hit: SearchHit };
 
 export function QuickNav() {
   const open = useStore((s) => s.quickNavOpen);
@@ -13,29 +26,67 @@ export function QuickNav() {
   const binder = useStore((s) => s.project?.meta.binder ?? NO_BINDER);
   const selectScene = useStore((s) => s.selectScene);
   const selectChapter = useStore((s) => s.selectChapter);
+  const openResearchItem = useStore((s) => s.openResearchItem);
 
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
+  const [hits, setHits] = useState<SearchHit[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const results = useMemo(() => {
+  // Titel-Treffer (sofort, aus dem Binder-Baum)
+  const nodeItems = useMemo<Item[]>(() => {
     const all = flattenTree(binder);
     const q = query.toLowerCase().trim();
-    const hits = q
+    const matches = q
       ? all.filter(
           ({ node, path }) =>
             node.title.toLowerCase().includes(q) ||
             path.join(" ").toLowerCase().includes(q),
         )
       : all;
-    return hits.slice(0, 50);
+    return matches.slice(0, 20).map(({ node, path }) => ({
+      type: "node",
+      id: node.id,
+      kind: node.kind,
+      title: node.title,
+      sub: path.join(" › "),
+    }));
   }, [binder, query]);
+
+  // Volltext-Treffer (debounced, über SQLite-FTS)
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) {
+      setHits([]);
+      return;
+    }
+    const t = setTimeout(() => {
+      void api
+        .searchProject(q)
+        .then(setHits)
+        .catch(() => setHits([]));
+    }, 200);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  // Volltexttreffer, die schon als Titeltreffer gelistet sind, nicht doppeln.
+  const items = useMemo<Item[]>(() => {
+    const nodeIds = new Set(
+      nodeItems.map((n) => (n.type === "node" ? n.id : "")),
+    );
+    return [
+      ...nodeItems,
+      ...hits
+        .filter((h) => !(h.kind === "scene" && nodeIds.has(h.id)))
+        .map<Item>((hit) => ({ type: "hit", hit })),
+    ];
+  }, [nodeItems, hits]);
 
   useEffect(() => {
     if (open) {
       setQuery("");
+      setHits([]);
       setSelected(0);
-      // Nach dem Rendern fokussieren.
       requestAnimationFrame(() => inputRef.current?.focus());
     }
   }, [open]);
@@ -45,11 +96,20 @@ export function QuickNav() {
   if (!open) return null;
 
   function pick(index: number) {
-    const hit = results[index];
-    if (!hit) return;
+    const item = items[index];
+    if (!item) return;
     setOpen(false);
-    if (hit.node.kind === "scene") void selectScene(hit.node.id);
-    else void selectChapter(hit.node.id);
+    if (item.type === "node") {
+      if (item.kind === "scene") void selectScene(item.id);
+      else void selectChapter(item.id);
+      return;
+    }
+    const { kind, id } = item.hit;
+    if (kind === "scene") void selectScene(id);
+    else if (kind === "note") openResearchItem("notes", id);
+    else if (kind === "character") openResearchItem("characters", id);
+    else if (kind === "location") openResearchItem("locations", id);
+    else if (kind === "event") openResearchItem("timeline", id);
   }
 
   return (
@@ -57,13 +117,13 @@ export function QuickNav() {
       <div className="quicknav" onClick={(e) => e.stopPropagation()}>
         <input
           ref={inputRef}
-          placeholder="Szene oder Kapitel suchen …"
+          placeholder="Suchen: Szenen, Notizen, Personen, Orte, Volltext …"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "ArrowDown") {
               e.preventDefault();
-              setSelected((s) => Math.min(s + 1, results.length - 1));
+              setSelected((s) => Math.min(s + 1, items.length - 1));
             } else if (e.key === "ArrowUp") {
               e.preventDefault();
               setSelected((s) => Math.max(s - 1, 0));
@@ -76,23 +136,46 @@ export function QuickNav() {
           }}
         />
         <ul>
-          {results.map(({ node, path }, i) => (
+          {items.map((item, i) => (
             <li
-              key={node.id}
+              key={item.type === "node" ? `n-${item.id}` : `h-${item.hit.kind}-${item.hit.id}`}
               className={i === selected ? "selected" : ""}
               onMouseEnter={() => setSelected(i)}
               onClick={() => pick(i)}
             >
-              <span>
-                {node.kind === "chapter" ? "📁 " : "📄 "}
-                {node.title}
-              </span>
-              {path.length > 0 && <span className="muted small">{path.join(" › ")}</span>}
+              {item.type === "node" ? (
+                <>
+                  <span>
+                    {item.kind === "chapter" ? "📁 " : "📄 "}
+                    {item.title}
+                  </span>
+                  {item.sub && <span className="muted small">{item.sub}</span>}
+                </>
+              ) : (
+                <>
+                  <span>
+                    {KIND_ICON[item.hit.kind]} {item.hit.title}
+                  </span>
+                  <span
+                    className="muted small snippet"
+                    dangerouslySetInnerHTML={{ __html: sanitizeSnippet(item.hit.snippet) }}
+                  />
+                </>
+              )}
             </li>
           ))}
-          {results.length === 0 && <li className="muted">Keine Treffer</li>}
+          {items.length === 0 && <li className="muted">Keine Treffer</li>}
         </ul>
       </div>
     </div>
   );
+}
+
+/** Snippet kommt aus dem FTS-Index mit <b>-Markierung; alles andere escapen. */
+function sanitizeSnippet(snippet: string): string {
+  const escaped = snippet
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  return escaped.replace(/&lt;b&gt;/g, "<b>").replace(/&lt;\/b&gt;/g, "</b>");
 }

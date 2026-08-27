@@ -1,4 +1,6 @@
 mod project;
+mod research;
+mod search;
 
 use project::AppState;
 
@@ -20,6 +22,20 @@ pub fn run() {
             project::update_node_meta,
             project::delete_node,
             project::check_external_changes,
+            research::list_entities,
+            research::save_entity,
+            research::delete_entity,
+            research::set_entity_image,
+            research::get_entity_image,
+            research::list_notes,
+            research::create_note,
+            research::rename_note,
+            research::delete_note,
+            research::read_note,
+            research::write_note,
+            research::load_timeline,
+            research::save_timeline,
+            search::search_project,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
