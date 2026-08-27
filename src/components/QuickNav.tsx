@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "../store";
 import { flattenTree } from "../tree";
+import type { BinderNode } from "../types";
+
+/** Stabile Referenz — `?? []` im Selector würde jedes Mal ein neues Array
+ *  liefern und eine Endlos-Render-Schleife auslösen. */
+const NO_BINDER: BinderNode[] = [];
 
 export function QuickNav() {
   const open = useStore((s) => s.quickNavOpen);
   const setOpen = useStore((s) => s.setQuickNavOpen);
-  const binder = useStore((s) => s.project?.meta.binder ?? []);
+  const binder = useStore((s) => s.project?.meta.binder ?? NO_BINDER);
   const selectScene = useStore((s) => s.selectScene);
   const selectChapter = useStore((s) => s.selectChapter);
 

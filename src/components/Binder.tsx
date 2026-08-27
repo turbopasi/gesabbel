@@ -9,8 +9,11 @@ let draggedId: string | null = null;
 
 type DropZone = "before" | "after" | "inside" | null;
 
+/** Stabile Referenz — `?? []` im Selector würde eine Endlos-Render-Schleife auslösen. */
+const NO_BINDER: BinderNode[] = [];
+
 export function Binder() {
-  const binder = useStore((s) => s.project?.meta.binder ?? []);
+  const binder = useStore((s) => s.project?.meta.binder ?? NO_BINDER);
   const createNode = useStore((s) => s.createNode);
 
   return (
