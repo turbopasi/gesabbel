@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { api } from "./api";
 import { loadNormVariant, saveNormVariant, type NormVariant } from "./stats";
+import { findNode } from "./tree";
 import type { NodeKind, ProjectInfo } from "./types";
 
 export type SaveState = "saved" | "dirty" | "saving" | "conflict";
@@ -8,6 +9,8 @@ export type PaneId = "left" | "right";
 
 export interface Pane {
   sceneId: string | null;
+  /** Kapitel-ID, wenn dieser Pane das Corkboard eines Kapitels zeigt (statt Editor). */
+  corkboardId: string | null;
   /** Markdown — aktuellster Stand aus dem Editor. */
   content: string;
   saveState: SaveState;
@@ -21,6 +24,7 @@ const TYPEWRITER_KEY = "schreibsoftware.typewriter";
 
 const emptyPane = (): Pane => ({
   sceneId: null,
+  corkboardId: null,
   content: "",
   saveState: "saved",
   loadCounter: 0,
@@ -60,6 +64,14 @@ interface Store {
   openProject: (path: string) => Promise<void>;
   closeProject: () => Promise<void>;
   selectScene: (id: string) => Promise<void>;
+  /** Zeigt das Corkboard eines Kapitels im aktiven Pane. */
+  selectChapter: (id: string) => Promise<void>;
+  updateNodeMeta: (
+    id: string,
+    patch: { synopsis?: string; status?: string; color?: string; tags?: string[] },
+  ) => Promise<void>;
+  quickNavOpen: boolean;
+  setQuickNavOpen: (open: boolean) => void;
   setContent: (paneId: PaneId, content: string) => void;
   flushPane: (paneId: PaneId) => Promise<void>;
   flushAll: () => Promise<void>;
@@ -141,12 +153,13 @@ export const useStore = create<Store>((set, get) => {
     selectScene: async (id) => {
       const paneId = get().activePane;
       const pane = get().panes[paneId];
-      if (pane.sceneId === id) return;
+      if (pane.sceneId === id && !pane.corkboardId) return;
       await get().flushPane(paneId);
       try {
         const content = await api.readScene(id);
         patchPane(paneId, {
           sceneId: id,
+          corkboardId: null,
           content,
           saveState: "saved",
           loadCounter: pane.loadCounter + 1,
@@ -155,6 +168,29 @@ export const useStore = create<Store>((set, get) => {
         fail(e);
       }
     },
+
+    selectChapter: async (id) => {
+      const paneId = get().activePane;
+      if (get().panes[paneId].corkboardId === id) return;
+      await get().flushPane(paneId);
+      patchPane(paneId, {
+        sceneId: null,
+        corkboardId: id,
+        content: "",
+        saveState: "saved",
+      });
+    },
+
+    updateNodeMeta: async (id, patch) => {
+      try {
+        set({ project: await api.updateNodeMeta(id, patch) });
+      } catch (e) {
+        fail(e);
+      }
+    },
+
+    quickNavOpen: false,
+    setQuickNavOpen: (open) => set({ quickNavOpen: open }),
 
     setContent: (paneId, content) => {
       patchPane(paneId, { content, saveState: "dirty" });
@@ -268,10 +304,11 @@ export const useStore = create<Store>((set, get) => {
       try {
         const project = await api.deleteNode(id);
         set({ project });
-        // Panes leeren, deren Szene es nicht mehr gibt.
+        // Panes leeren, deren Szene/Kapitel es nicht mehr gibt.
         for (const paneId of ["left", "right"] as PaneId[]) {
-          const sceneId = get().panes[paneId].sceneId;
-          if (sceneId && !sceneExists(project, sceneId)) {
+          const pane = get().panes[paneId];
+          const ref = pane.sceneId ?? pane.corkboardId;
+          if (ref && !findNode(project.meta.binder, ref)) {
             patchPane(paneId, emptyPane());
           }
         }
@@ -299,8 +336,12 @@ export const useStore = create<Store>((set, get) => {
         // Offene Szenen neu einlesen (außer bei ungelöstem Konflikt).
         for (const paneId of ["left", "right"] as PaneId[]) {
           const pane = get().panes[paneId];
+          if (pane.corkboardId && !findNode(project.meta.binder, pane.corkboardId)) {
+            patchPane(paneId, emptyPane());
+            continue;
+          }
           if (!pane.sceneId) continue;
-          if (!sceneExists(project, pane.sceneId)) {
+          if (!findNode(project.meta.binder, pane.sceneId)) {
             patchPane(paneId, emptyPane());
           } else if (pane.saveState !== "conflict") {
             const content = await api.readScene(pane.sceneId);
@@ -319,9 +360,3 @@ export const useStore = create<Store>((set, get) => {
     clearError: () => set({ error: null }),
   };
 });
-
-function sceneExists(project: ProjectInfo, id: string): boolean {
-  const walk = (nodes: { id: string; children: any[] }[]): boolean =>
-    nodes.some((n) => n.id === id || walk(n.children));
-  return walk(project.meta.binder);
-}

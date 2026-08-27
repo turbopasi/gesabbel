@@ -33,8 +33,42 @@ pub struct BinderNode {
     pub id: String,
     pub kind: NodeKind,
     pub title: String,
+    /// Kurzbeschreibung für die Corkboard-Karteikarte.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub synopsis: String,
+    /// "draft" | "revision" | "done"
+    #[serde(default = "default_status", skip_serializing_if = "is_default_status")]
+    pub status: String,
+    /// Farbcodierung als CSS-Farbe (z. B. "#e6b33f").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tags: Vec<String>,
     #[serde(default)]
     pub children: Vec<BinderNode>,
+}
+
+fn default_status() -> String {
+    "draft".into()
+}
+
+fn is_default_status(s: &str) -> bool {
+    s == "draft"
+}
+
+impl BinderNode {
+    fn new(id: String, kind: NodeKind, title: String) -> Self {
+        BinderNode {
+            id,
+            kind,
+            title,
+            synopsis: String::new(),
+            status: default_status(),
+            color: None,
+            tags: Vec::new(),
+            children: Vec::new(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -283,16 +317,13 @@ pub fn create_project(
         title: if title.trim().is_empty() { safe_name.clone() } else { title },
         author,
         created: chrono::Local::now().to_rfc3339(),
-        binder: vec![BinderNode {
-            id: make_id("Kapitel 1"),
-            kind: NodeKind::Chapter,
-            title: "Kapitel 1".into(),
-            children: vec![BinderNode {
-                id: scene_id,
-                kind: NodeKind::Scene,
-                title: "Szene 1".into(),
-                children: vec![],
-            }],
+        binder: vec![{
+            let mut chapter =
+                BinderNode::new(make_id("Kapitel 1"), NodeKind::Chapter, "Kapitel 1".into());
+            chapter
+                .children
+                .push(BinderNode::new(scene_id, NodeKind::Scene, "Szene 1".into()));
+            chapter
         }],
     };
 
@@ -410,12 +441,7 @@ pub fn create_node(
                 p.known_mtimes.insert(rel, mt);
             }
         }
-        let node = BinderNode {
-            id,
-            kind,
-            title,
-            children: vec![],
-        };
+        let node = BinderNode::new(id, kind, title);
         match parent_id {
             Some(pid) => find_node_mut(&mut p.meta.binder, &pid)
                 .ok_or(format!("Parent nicht gefunden: {pid}"))?
@@ -467,6 +493,40 @@ pub fn move_node(
             None => &mut p.meta.binder,
         };
         target.insert(index.min(target.len()), node);
+        p.write_meta()?;
+        Ok(p.info())
+    })
+}
+
+/// Teil-Update der Szenen-/Kapitel-Metadaten. Nicht übergebene Felder bleiben
+/// unverändert; `color: ""` löscht die Farbe.
+#[tauri::command]
+pub fn update_node_meta(
+    id: String,
+    synopsis: Option<String>,
+    status: Option<String>,
+    color: Option<String>,
+    tags: Option<Vec<String>>,
+    state: tauri::State<AppState>,
+) -> Result<ProjectInfo, String> {
+    with_project(&state, |p| {
+        let node = find_node_mut(&mut p.meta.binder, &id)
+            .ok_or(format!("Node nicht gefunden: {id}"))?;
+        if let Some(s) = synopsis {
+            node.synopsis = s;
+        }
+        if let Some(s) = status {
+            if !["draft", "revision", "done"].contains(&s.as_str()) {
+                return Err(format!("Unbekannter Status: {s}"));
+            }
+            node.status = s;
+        }
+        if let Some(c) = color {
+            node.color = if c.is_empty() { None } else { Some(c) };
+        }
+        if let Some(t) = tags {
+            node.tags = t;
+        }
         p.write_meta()?;
         Ok(p.info())
     })

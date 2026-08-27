@@ -15,6 +15,16 @@ export const api = {
     invoke<ProjectInfo>("rename_node", { id, title }),
   moveNode: (id: string, newParentId: string | null, index: number) =>
     invoke<ProjectInfo>("move_node", { id, newParentId, index }),
+  updateNodeMeta: (
+    id: string,
+    patch: {
+      synopsis?: string;
+      status?: string;
+      /** "" löscht die Farbe. */
+      color?: string;
+      tags?: string[];
+    },
+  ) => invoke<ProjectInfo>("update_node_meta", { id, ...patch }),
   deleteNode: (id: string) => invoke<ProjectInfo>("delete_node", { id }),
   checkExternalChanges: () => invoke<string[]>("check_external_changes"),
 };

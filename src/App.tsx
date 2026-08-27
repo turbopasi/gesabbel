@@ -4,6 +4,8 @@ import { useStore, type PaneId } from "./store";
 import { StartScreen } from "./components/StartScreen";
 import { Binder } from "./components/Binder";
 import { RichEditor } from "./components/RichEditor";
+import { Corkboard } from "./components/Corkboard";
+import { QuickNav } from "./components/QuickNav";
 import "./App.css";
 
 function App() {
@@ -31,6 +33,11 @@ function App() {
       if (e.ctrlKey && e.shiftKey && e.code === "KeyF") {
         e.preventDefault();
         s.toggleFocusMode();
+      } else if (e.ctrlKey && !e.shiftKey && e.code === "KeyK") {
+        e.preventDefault();
+        if (s.project) s.setQuickNavOpen(!s.quickNavOpen);
+      } else if (e.key === "Escape" && s.quickNavOpen) {
+        s.setQuickNavOpen(false);
       } else if (e.key === "Escape" && s.focusMode) {
         s.setFocusMode(false);
       }
@@ -50,6 +57,7 @@ function App() {
       <ConflictBanner paneId="left" />
       <ConflictBanner paneId="right" />
       <ExternalChangesBanner />
+      <QuickNav />
       {project ? <MainView /> : <StartScreen />}
     </div>
   );
@@ -77,11 +85,30 @@ function MainView() {
       </header>
       <div className="panes">
         <Binder />
-        <RichEditor paneId="left" />
-        {splitOpen && <RichEditor paneId="right" />}
+        <PaneView paneId="left" />
+        {splitOpen && <PaneView paneId="right" />}
       </div>
     </div>
   );
+}
+
+/** Zeigt je nach Pane-Zustand Corkboard (Kapitel gewählt) oder Editor. */
+function PaneView({ paneId }: { paneId: PaneId }) {
+  const corkboardId = useStore((s) => s.panes[paneId].corkboardId);
+  const isActive = useStore((s) => s.activePane === paneId && s.splitOpen);
+  const setActivePane = useStore((s) => s.setActivePane);
+
+  if (corkboardId) {
+    return (
+      <section
+        className={`editor ${isActive ? "pane-active" : ""}`}
+        onMouseDownCapture={() => setActivePane(paneId)}
+      >
+        <Corkboard chapterId={corkboardId} />
+      </section>
+    );
+  }
+  return <RichEditor paneId={paneId} />;
 }
 
 /** Szene in diesem Pane wurde extern verändert, während lokal ungespeicherte Änderungen bestehen. */

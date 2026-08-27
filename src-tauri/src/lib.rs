@@ -17,6 +17,7 @@ pub fn run() {
             project::create_node,
             project::rename_node,
             project::move_node,
+            project::update_node_meta,
             project::delete_node,
             project::check_external_changes,
         ])
