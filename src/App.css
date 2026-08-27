@@ -1101,3 +1101,145 @@ button.on {
   background: rgba(255, 255, 255, 0.85);
   color: #1a1a1a;
 }
+
+/* --------------------------------------------------------------------------
+   Export-Dialog (Phase 6)
+   -------------------------------------------------------------------------- */
+
+.export-dialog {
+  width: min(58rem, 94vw);
+}
+
+.export-split {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.export-tree {
+  width: 17rem;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 0.6rem 0.75rem;
+}
+
+.export-tree h3 {
+  margin: 0 0 0.15rem 0;
+  font-size: 0.95rem;
+}
+
+.export-tree-list {
+  list-style: none;
+  margin: 0.3rem 0 0 0;
+  padding: 0;
+}
+
+.export-tree-list li {
+  padding-top: 0.15rem;
+}
+
+.export-chapter {
+  font-weight: 600;
+}
+
+.export-settings {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 0.6rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.export-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.export-row > span:first-child {
+  width: 10rem;
+  flex-shrink: 0;
+  font-size: 0.9rem;
+}
+
+.export-row input,
+.export-row select {
+  flex: 1;
+  min-width: 0;
+}
+
+.export-row input[type="number"] {
+  flex: 0 0 4.5rem;
+}
+
+.export-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.export-margin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.export-margin input {
+  width: 4rem;
+}
+
+.export-check {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.export-template {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.export-template legend {
+  font-size: 0.85rem;
+  padding: 0 0.3rem;
+}
+
+.export-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.export-actions .spacer {
+  flex: 1;
+}
+
+.export-done {
+  font-size: 0.85rem;
+  color: #27ae60;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 24rem;
+}
+
+button.primary {
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+}

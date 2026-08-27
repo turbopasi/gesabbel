@@ -2,6 +2,8 @@ import { invoke } from "@tauri-apps/api/core";
 import type {
   Entity,
   EntityKind,
+  ExportFormat,
+  ExportTemplate,
   NodeKind,
   NoteInfo,
   ProjectInfo,
@@ -71,6 +73,19 @@ export const api = {
   /** Stellt eine Version wieder her und liefert den Inhalt zurück. */
   restoreVersion: (commitId: string, rel: string) =>
     invoke<string>("restore_version", { commitId, rel }),
+
+  listExportTemplates: () => invoke<ExportTemplate[]>("list_export_templates"),
+  saveExportTemplate: (template: ExportTemplate) =>
+    invoke<ExportTemplate[]>("save_export_template", { template }),
+  deleteExportTemplate: (id: string) =>
+    invoke<ExportTemplate[]>("delete_export_template", { id }),
+  /** Exportiert die ausgewählten Binder-Teile; liefert den finalen Dateipfad. */
+  exportProject: (
+    format: ExportFormat,
+    template: ExportTemplate,
+    includeIds: string[],
+    outPath: string,
+  ) => invoke<string>("export_project", { format, template, includeIds, outPath }),
 };
 
 /** Projektrelativer Pfad einer Szenendatei (muss zum Rust-Backend passen). */

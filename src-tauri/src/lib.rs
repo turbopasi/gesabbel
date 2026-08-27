@@ -1,3 +1,4 @@
+mod export;
 mod project;
 mod research;
 mod search;
@@ -41,6 +42,10 @@ pub fn run() {
             versioning::list_history,
             versioning::get_version,
             versioning::restore_version,
+            export::list_export_templates,
+            export::save_export_template,
+            export::delete_export_template,
+            export::export_project,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

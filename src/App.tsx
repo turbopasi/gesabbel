@@ -8,6 +8,7 @@ import { Corkboard } from "./components/Corkboard";
 import { QuickNav } from "./components/QuickNav";
 import { Research } from "./components/Research";
 import { HistoryOverlay } from "./components/HistoryPanel";
+import { ExportOverlay } from "./components/ExportDialog";
 import "./App.css";
 
 function App() {
@@ -38,6 +39,8 @@ function App() {
       } else if (e.ctrlKey && !e.shiftKey && e.code === "KeyK") {
         e.preventDefault();
         if (s.project) s.setQuickNavOpen(!s.quickNavOpen);
+      } else if (e.key === "Escape" && s.exportOpen) {
+        s.setExportOpen(false);
       } else if (e.key === "Escape" && s.historyFor) {
         s.setHistoryFor(null);
       } else if (e.key === "Escape" && s.quickNavOpen) {
@@ -70,6 +73,7 @@ function App() {
       <ExternalChangesBanner />
       <QuickNav />
       <HistoryOverlay />
+      <ExportOverlay />
       {project ? <MainView /> : <StartScreen />}
     </div>
   );
@@ -85,6 +89,7 @@ function MainView() {
   const toggleFocusMode = useStore((s) => s.toggleFocusMode);
   const takeSnapshot = useStore((s) => s.takeSnapshot);
   const snapshotNotice = useStore((s) => s.snapshotNotice);
+  const setExportOpen = useStore((s) => s.setExportOpen);
 
   return (
     <div className="main-layout">
@@ -108,6 +113,12 @@ function MainView() {
             </button>
           </>
         )}
+        <button
+          title="Manuskript als DOCX, PDF, ePub, Markdown oder Text exportieren"
+          onClick={() => setExportOpen(true)}
+        >
+          Exportieren
+        </button>
         {snapshotNotice && <span className="small snapshot-notice">{snapshotNotice}</span>}
         <button
           title="Aktuellen Stand des ganzen Projekts im Verlauf sichern"

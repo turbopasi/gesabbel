@@ -70,6 +70,39 @@ export interface VersionInfo {
   message: string;
 }
 
+export type ExportFormat = "docx" | "pdf" | "epub" | "markdown" | "txt";
+
+export interface ExportTemplate {
+  id: string;
+  name: string;
+  builtIn?: boolean;
+  /** "times" | "georgia" | "arial" | "courier" */
+  font: string;
+  fontSizePt: number;
+  lineSpacing: number;
+  marginsMm: { top: number; bottom: number; left: number; right: number };
+  /** Kopfzeile mit Platzhaltern {titel} {autor} {seite}; leer = keine. */
+  header: string;
+  sceneSeparator: string;
+  chapterStartNewPage: boolean;
+  includeSceneTitles: boolean;
+}
+
+export const EXPORT_FORMAT_LABEL: Record<ExportFormat, string> = {
+  docx: "Word (DOCX)",
+  pdf: "PDF",
+  epub: "ePub (E-Book)",
+  markdown: "Markdown",
+  txt: "Reiner Text (TXT)",
+};
+
+export const EXPORT_FONT_LABEL: Record<string, string> = {
+  times: "Times New Roman",
+  georgia: "Georgia",
+  arial: "Arial",
+  courier: "Courier New",
+};
+
 export const STATUS_LABEL: Record<NodeStatus, string> = {
   draft: "Entwurf",
   revision: "Überarbeitung",

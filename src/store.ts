@@ -104,6 +104,9 @@ interface Store {
   /** Szene, deren Verlauf gerade angezeigt wird (null = Modal geschlossen). */
   historyFor: string | null;
   setHistoryFor: (sceneId: string | null) => void;
+  /** Export-Dialog (Phase 6). */
+  exportOpen: boolean;
+  setExportOpen: (open: boolean) => void;
   /** Kurzes Feedback nach manuellem Sicherungspunkt (Titelleiste). */
   snapshotNotice: string | null;
   /** Sicherungspunkt über das ganze Projekt; ohne message automatisch (still). */
@@ -169,7 +172,7 @@ export const useStore = create<Store>((set, get) => {
       await api.snapshot("Automatischer Sicherungspunkt (Projekt geschlossen)").catch(() => {});
       await api.closeProject().catch(() => {});
       resetView(null);
-      set({ focusMode: false, historyFor: null });
+      set({ focusMode: false, historyFor: null, exportOpen: false });
     },
 
     selectScene: async (id) => {
@@ -403,6 +406,13 @@ export const useStore = create<Store>((set, get) => {
 
     historyFor: null,
     setHistoryFor: (sceneId) => set({ historyFor: sceneId }),
+
+    exportOpen: false,
+    setExportOpen: (open) => {
+      // Vor dem Export offene Änderungen auf Platte bringen.
+      if (open) void get().flushAll();
+      set({ exportOpen: open });
+    },
 
     snapshotNotice: null,
 
