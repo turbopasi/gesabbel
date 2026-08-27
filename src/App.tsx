@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, type MouseEvent as ReactMouseEvent } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useStore, type PaneId } from "./store";
+import { eventToCombo, SHORTCUT_ACTIONS } from "./settings";
 import { StartScreen } from "./components/StartScreen";
 import { Binder } from "./components/Binder";
 import { RichEditor } from "./components/RichEditor";
@@ -9,6 +10,7 @@ import { QuickNav } from "./components/QuickNav";
 import { Research } from "./components/Research";
 import { HistoryOverlay } from "./components/HistoryPanel";
 import { ExportOverlay } from "./components/ExportDialog";
+import { SettingsOverlay } from "./components/SettingsDialog";
 import "./App.css";
 
 function App() {
@@ -29,25 +31,54 @@ function App() {
     };
   }, []);
 
-  // Globale Shortcuts: Strg+Umschalt+F Fokusmodus, Esc beendet ihn.
+  // Gespeicherte Einstellungen (Theme, Editor, Layout, Kürzel) einmalig laden.
+  useEffect(() => {
+    void useStore.getState().initSettings();
+  }, []);
+
+  // Globale Shortcuts — Belegung kommt aus den Einstellungen (Phase 7).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const s = useStore.getState();
-      if (e.ctrlKey && e.shiftKey && e.code === "KeyF") {
-        e.preventDefault();
-        s.toggleFocusMode();
-      } else if (e.ctrlKey && !e.shiftKey && e.code === "KeyK") {
-        e.preventDefault();
-        if (s.project) s.setQuickNavOpen(!s.quickNavOpen);
-      } else if (e.key === "Escape" && s.exportOpen) {
-        s.setExportOpen(false);
-      } else if (e.key === "Escape" && s.historyFor) {
-        s.setHistoryFor(null);
-      } else if (e.key === "Escape" && s.quickNavOpen) {
-        s.setQuickNavOpen(false);
-      } else if (e.key === "Escape" && s.focusMode) {
-        s.setFocusMode(false);
+      if (e.key === "Escape") {
+        if (s.settingsOpen) s.setSettingsOpen(false);
+        else if (s.exportOpen) s.setExportOpen(false);
+        else if (s.historyFor) s.setHistoryFor(null);
+        else if (s.quickNavOpen) s.setQuickNavOpen(false);
+        else if (s.focusMode) s.setFocusMode(false);
+        return;
       }
+      // Bereits verarbeitete Events (z. B. Editor-Befehle) nicht doppelt auslösen.
+      if (e.defaultPrevented) return;
+      const combo = eventToCombo(e);
+      if (!combo) return;
+      // Kürzel ohne Strg/Alt nicht beim Tippen in Feldern auslösen.
+      if (!e.ctrlKey && !e.altKey && isTypingTarget(e.target)) return;
+      const actionId = SHORTCUT_ACTIONS.find((a) => s.settings.shortcuts[a.id] === combo)?.id;
+      if (!actionId) return;
+
+      const actions: Record<string, () => void> = {
+        focusMode: () => s.toggleFocusMode(),
+        quickNav: () => {
+          if (s.project) s.setQuickNavOpen(!s.quickNavOpen);
+        },
+        toggleSplit: () => {
+          if (s.project && s.view === "write") void s.toggleSplit();
+        },
+        toggleBinder: () =>
+          s.updateSettings({
+            layout: { ...s.settings.layout, binderVisible: !s.settings.layout.binderVisible },
+          }),
+        snapshot: () => {
+          if (s.project) void s.takeSnapshot("Manueller Sicherungspunkt");
+        },
+        export: () => {
+          if (s.project) s.setExportOpen(true);
+        },
+        settings: () => s.setSettingsOpen(!s.settingsOpen),
+      };
+      e.preventDefault();
+      actions[actionId]?.();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -74,8 +105,33 @@ function App() {
       <QuickNav />
       <HistoryOverlay />
       <ExportOverlay />
-      {project ? <MainView /> : <StartScreen />}
+      <SettingsOverlay />
+      {project ? (
+        <MainView />
+      ) : (
+        <>
+          <StartScreen />
+          <button
+            className="settings-float"
+            title="Einstellungen (Strg+,)"
+            onClick={() => useStore.getState().setSettingsOpen(true)}
+          >
+            ⚙ Einstellungen
+          </button>
+        </>
+      )}
     </div>
+  );
+}
+
+/** true, wenn das Event aus einem Eingabefeld/Editor stammt. */
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement ||
+    target.isContentEditable
   );
 }
 
@@ -90,6 +146,15 @@ function MainView() {
   const takeSnapshot = useStore((s) => s.takeSnapshot);
   const snapshotNotice = useStore((s) => s.snapshotNotice);
   const setExportOpen = useStore((s) => s.setExportOpen);
+  const setSettingsOpen = useStore((s) => s.setSettingsOpen);
+  const binderVisible = useStore((s) => s.settings.layout.binderVisible);
+  const binderPosition = useStore((s) => s.settings.layout.binderPosition);
+  const updateSettings = useStore((s) => s.updateSettings);
+
+  const toggleBinder = () => {
+    const lay = useStore.getState().settings.layout;
+    updateSettings({ layout: { ...lay, binderVisible: !lay.binderVisible } });
+  };
 
   return (
     <div className="main-layout">
@@ -105,10 +170,17 @@ function MainView() {
         </button>
         {view === "write" && (
           <>
+            <button
+              className={binderVisible ? "on" : ""}
+              title="Binder ein-/ausblenden"
+              onClick={toggleBinder}
+            >
+              Binder
+            </button>
             <button className={splitOpen ? "on" : ""} onClick={() => void toggleSplit()}>
               Split
             </button>
-            <button title="Fokusmodus (Strg+Umschalt+F)" onClick={toggleFocusMode}>
+            <button title="Fokusmodus" onClick={toggleFocusMode}>
               Fokus
             </button>
           </>
@@ -126,19 +198,53 @@ function MainView() {
         >
           Sicherungspunkt
         </button>
+        <button title="Einstellungen (Strg+,)" onClick={() => setSettingsOpen(true)}>
+          ⚙
+        </button>
         <button onClick={() => void closeProject()}>Projekt schließen</button>
       </header>
       {view === "research" ? (
         <Research />
       ) : (
         <div className="panes">
-          <Binder />
+          {binderVisible && binderPosition === "left" && (
+            <>
+              <Binder />
+              <BinderResizer side="left" />
+            </>
+          )}
           <PaneView paneId="left" />
           {splitOpen && <PaneView paneId="right" />}
+          {binderVisible && binderPosition === "right" && (
+            <>
+              <BinderResizer side="right" />
+              <Binder />
+            </>
+          )}
         </div>
       )}
     </div>
   );
+}
+
+/** Trennsteg zum Verstellen der Binder-Breite per Drag. */
+function BinderResizer({ side }: { side: "left" | "right" }) {
+  const onMouseDown = (e: ReactMouseEvent) => {
+    e.preventDefault();
+    const move = (ev: MouseEvent) => {
+      const raw = side === "left" ? ev.clientX : window.innerWidth - ev.clientX;
+      const width = Math.min(500, Math.max(160, Math.round(raw)));
+      const s = useStore.getState();
+      s.updateSettings({ layout: { ...s.settings.layout, binderWidth: width } });
+    };
+    const up = () => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+  };
+  return <div className="pane-resizer" onMouseDown={onMouseDown} />;
 }
 
 /** Zeigt je nach Pane-Zustand Corkboard (Kapitel gewählt) oder Editor. */

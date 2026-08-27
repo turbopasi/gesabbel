@@ -1,5 +1,11 @@
 import { create } from "zustand";
 import { api, sceneRelPath } from "./api";
+import {
+  applySettings,
+  defaultSettings,
+  mergeSettings,
+  type AppSettings,
+} from "./settings";
 import { loadNormVariant, saveNormVariant, type NormVariant } from "./stats";
 import { findNode } from "./tree";
 import type { NodeKind, ProjectInfo } from "./types";
@@ -35,6 +41,8 @@ const autosaveTimers: Record<PaneId, ReturnType<typeof setTimeout> | null> = {
   left: null,
   right: null,
 };
+
+let settingsPersistTimer: ReturnType<typeof setTimeout> | null = null;
 
 export function loadRecents(): string[] {
   try {
@@ -112,6 +120,15 @@ interface Store {
   /** Sicherungspunkt über das ganze Projekt; ohne message automatisch (still). */
   takeSnapshot: (message?: string) => Promise<void>;
   restoreVersion: (sceneId: string, commitId: string) => Promise<void>;
+
+  /** App-weite Einstellungen (Phase 7): Theme, Editor, Layout, Kürzel. */
+  settings: AppSettings;
+  settingsOpen: boolean;
+  setSettingsOpen: (open: boolean) => void;
+  /** Lädt gespeicherte Einstellungen vom Backend und wendet sie an. */
+  initSettings: () => Promise<void>;
+  /** Wendet die Änderung sofort an und persistiert debounced. */
+  updateSettings: (patch: Partial<AppSettings>) => void;
 }
 
 export const useStore = create<Store>((set, get) => {
@@ -453,6 +470,32 @@ export const useStore = create<Store>((set, get) => {
       } catch (e) {
         fail(e);
       }
+    },
+
+    settings: defaultSettings(),
+    settingsOpen: false,
+    setSettingsOpen: (open) => set({ settingsOpen: open }),
+
+    initSettings: async () => {
+      try {
+        const settings = mergeSettings(await api.loadSettings());
+        set({ settings });
+        applySettings(settings);
+      } catch {
+        // Backend nicht erreichbar → mit Defaults weiterarbeiten.
+        applySettings(get().settings);
+      }
+    },
+
+    updateSettings: (patch) => {
+      const settings = { ...get().settings, ...patch };
+      set({ settings });
+      applySettings(settings);
+      if (settingsPersistTimer) clearTimeout(settingsPersistTimer);
+      settingsPersistTimer = setTimeout(
+        () => void api.saveSettings(get().settings).catch(() => {}),
+        500,
+      );
     },
   };
 });

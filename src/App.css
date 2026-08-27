@@ -1,21 +1,68 @@
+/* --------------------------------------------------------------------------
+   Theming-Engine (Phase 7): Alle Farben laufen über CSS-Variablen.
+   `data-theme` auf <html> wählt ein mitgeliefertes Theme; "custom" setzt die
+   Variablen inline per JS (siehe src/settings.ts). Ohne data-theme gilt
+   "System" (helle Basis + prefers-color-scheme).
+   -------------------------------------------------------------------------- */
+
 :root {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  color: #1a1a1a;
-  background-color: #f6f6f6;
+  --bg: #f6f6f6;
+  --text: #1a1a1a;
   --border: #d5d5d5;
   --panel: #ececec;
   --accent: #4a6da7;
   --accent-text: #ffffff;
+  --card: #fffdf5;
+  /* Editor-Einstellungen (überschrieben aus den Einstellungen) */
+  --editor-font: Georgia, "Times New Roman", serif;
+  --editor-size: 17px;
+  --editor-lineheight: 1.7;
+  --editor-width: 48rem;
+  --caret: currentColor;
+  --binder-width: 250px;
+  color: var(--text);
+  background-color: var(--bg);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    color: #f0f0f0;
-    background-color: #1e1e1e;
+  :root:not([data-theme]) {
+    --bg: #1e1e1e;
+    --text: #f0f0f0;
     --border: #3a3a3a;
     --panel: #252526;
     --accent: #5d84c4;
+    --card: #2d2d2d;
   }
+}
+
+:root[data-theme="dark"] {
+  --bg: #1e1e1e;
+  --text: #f0f0f0;
+  --border: #3a3a3a;
+  --panel: #252526;
+  --accent: #5d84c4;
+  --card: #2d2d2d;
+}
+
+:root[data-theme="sepia"] {
+  --bg: #f4ecd8;
+  --text: #5b4636;
+  --border: #d8c9a3;
+  --panel: #eaddc0;
+  --accent: #8a6d3b;
+  --accent-text: #ffffff;
+  --card: #fbf5e6;
+}
+
+:root[data-theme="midnight"] {
+  --bg: #0f1626;
+  --text: #d8e0f0;
+  --border: #2a3a5c;
+  --panel: #16203a;
+  --accent: #5b8dd9;
+  --accent-text: #ffffff;
+  --card: #1b2742;
 }
 
 * {
@@ -153,12 +200,31 @@ input {
 /* --- Binder --- */
 
 .binder {
-  width: 250px;
+  width: var(--binder-width, 250px);
   flex-shrink: 0;
   border-right: 1px solid var(--border);
   background: var(--panel);
   overflow-y: auto;
   padding: 0.5rem;
+}
+
+/* Binder rechts (letztes Kind der Pane-Zeile): Rahmen auf die andere Seite. */
+.panes > .binder:last-child {
+  border-right: none;
+  border-left: 1px solid var(--border);
+}
+
+.pane-resizer {
+  width: 5px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  margin: 0 -2px;
+  z-index: 5;
+}
+
+.pane-resizer:hover {
+  background: var(--accent);
+  opacity: 0.5;
 }
 
 .binder-header {
@@ -319,12 +385,6 @@ li.scene .binder-row {
   gap: 0.4rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
   cursor: grab;
-}
-
-@media (prefers-color-scheme: dark) {
-  .card {
-    --card: #2d2d2d;
-  }
 }
 
 .card.drop-before {
@@ -535,12 +595,13 @@ button.on {
   min-height: 100%;
   outline: none;
   padding: 2rem clamp(1rem, 10%, 6rem) 3rem;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 1.05rem;
-  line-height: 1.7;
-  max-width: 48rem;
+  font-family: var(--editor-font);
+  font-size: var(--editor-size);
+  line-height: var(--editor-lineheight);
+  max-width: var(--editor-width);
   margin: 0 auto;
   box-sizing: content-box;
+  caret-color: var(--caret, currentColor);
 }
 
 /* Typewriter-Modus: Platz, damit die Cursorzeile mittig bleiben kann. */
@@ -782,11 +843,12 @@ button.on {
   border: none;
   outline: none;
   padding: 1.5rem clamp(1rem, 8%, 4rem);
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 1rem;
-  line-height: 1.6;
+  font-family: var(--editor-font);
+  font-size: calc(var(--editor-size) * 0.95);
+  line-height: var(--editor-lineheight);
   background: transparent;
   color: inherit;
+  caret-color: var(--caret, currentColor);
 }
 
 /* Zeitstrahl */
@@ -1072,6 +1134,7 @@ button.on {
 
 .app.focus-mode .titlebar,
 .app.focus-mode .binder,
+.app.focus-mode .pane-resizer,
 .app.focus-mode .toolbar {
   display: none;
 }
@@ -1242,4 +1305,136 @@ button.primary {
   background: var(--accent);
   color: var(--accent-text);
   font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   Einstellungen (Phase 7)
+   -------------------------------------------------------------------------- */
+
+.settings-float {
+  position: fixed;
+  top: 0.75rem;
+  right: 0.75rem;
+}
+
+.settings-dialog {
+  width: min(46rem, 94vw);
+  height: min(34rem, 78vh);
+}
+
+.settings-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.settings-tabs {
+  width: 10.5rem;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  padding: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.settings-tabs button {
+  text-align: left;
+}
+
+.settings-content {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.settings-content h3 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1rem;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.settings-row > span:first-child {
+  width: 11rem;
+  flex-shrink: 0;
+  font-size: 0.9rem;
+}
+
+.settings-row input[type="number"] {
+  width: 5rem;
+}
+
+.settings-row input[type="color"] {
+  width: 3rem;
+  height: 1.8rem;
+  padding: 0.1rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+}
+
+.settings-row select {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--panel);
+  color: inherit;
+}
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+}
+
+.shortcut-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.shortcut-table td {
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.shortcut-table kbd {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.8rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.1rem 0.4rem;
+}
+
+.shortcut-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.shortcut-actions button {
+  font-size: 0.8rem;
+  padding: 0.15rem 0.5rem;
+  margin-left: 0.3rem;
+}
+
+.shortcut-conflict {
+  margin: 0;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  background: #e6b33f;
+  color: #1a1a1a;
+  font-size: 0.85rem;
 }

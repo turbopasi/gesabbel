@@ -2,6 +2,7 @@ mod export;
 mod project;
 mod research;
 mod search;
+mod settings;
 mod versioning;
 
 use project::AppState;
@@ -46,6 +47,8 @@ pub fn run() {
             export::save_export_template,
             export::delete_export_template,
             export::export_project,
+            settings::load_settings,
+            settings::save_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

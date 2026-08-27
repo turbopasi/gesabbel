@@ -86,6 +86,10 @@ export const api = {
     includeIds: string[],
     outPath: string,
   ) => invoke<string>("export_project", { format, template, includeIds, outPath }),
+
+  /** App-weite Einstellungen (Phase 7); Schema gehört dem Frontend. */
+  loadSettings: () => invoke<unknown>("load_settings"),
+  saveSettings: (settings: unknown) => invoke<void>("save_settings", { settings }),
 };
 
 /** Projektrelativer Pfad einer Szenendatei (muss zum Rust-Backend passen). */
