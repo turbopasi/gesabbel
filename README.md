@@ -7,7 +7,13 @@ Papyrus Autor (deutsche Normseite, Zeitstrahl, Personen-/Ortsdatenbank).
 **Zielplattformen:** Windows, Linux (macOS später)
 **Lizenz:** Kostenlos, Open Source
 
-Der vollständige Entwicklungsplan steht in [dev-plan-schreibsoftware.md](dev-plan-schreibsoftware.md).
+**Kernprinzip Datenformat:** Ein Projekt ist ein Ordner mit vielen kleinen Dateien
+(`.autorproj`, analog Scriveners `.scriv`-Package) — keine einzelne SQLite- oder
+JSON-Datei. Das ermöglicht sichere Cloud-Synchronisation über Dropbox & Co. und
+sinnvolles Git-Diffing. SQLite dient nur als regenerierbarer Such-/Index-Cache
+(`.cache/index.sqlite`, nicht versioniert).
+
+Die restlichen Schritte bis zum ersten Release stehen in [finalisierung-plan.md](finalisierung-plan.md).
 
 ## Entwicklung
 
