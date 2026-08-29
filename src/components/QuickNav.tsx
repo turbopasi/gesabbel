@@ -3,17 +3,18 @@ import { api } from "../api";
 import { useStore } from "../store";
 import { flattenTree } from "../tree";
 import type { BinderNode, SearchHit } from "../types";
+import { Icon, type IconName } from "./Icon";
 
 /** Stabile Referenz — `?? []` im Selector würde jedes Mal ein neues Array
  *  liefern und eine Endlos-Render-Schleife auslösen. */
 const NO_BINDER: BinderNode[] = [];
 
-const KIND_ICON: Record<SearchHit["kind"], string> = {
-  scene: "📄",
-  note: "🗒",
-  character: "👤",
-  location: "📍",
-  event: "🕑",
+const KIND_ICON: Record<SearchHit["kind"], IconName> = {
+  scene: "file-text",
+  note: "notebook-text",
+  character: "user",
+  location: "map-pin",
+  event: "clock",
 };
 
 type Item =
@@ -148,7 +149,7 @@ export function QuickNav() {
               {item.type === "node" ? (
                 <>
                   <span>
-                    {item.kind === "chapter" ? "📁 " : "📄 "}
+                    <Icon name={item.kind === "chapter" ? "folder" : "file-text"} size={14} />
                     {item.title}
                   </span>
                   {item.sub && <span className="muted small">{item.sub}</span>}
@@ -156,7 +157,8 @@ export function QuickNav() {
               ) : (
                 <>
                   <span>
-                    {KIND_ICON[item.hit.kind]} {item.hit.title}
+                    <Icon name={KIND_ICON[item.hit.kind]} size={14} />
+                    {item.hit.title}
                   </span>
                   <span
                     className="muted small snippet"

@@ -11,6 +11,7 @@ import { TimelinePanel } from "./components/TimelinePanel";
 import { ResearchPane } from "./components/ResearchPane";
 import { ResearchSidebar } from "./components/ResearchSidebar";
 import { LayoutMenu } from "./components/LayoutMenu";
+import { Icon } from "./components/Icon";
 import { HistoryOverlay } from "./components/HistoryPanel";
 import { ExportOverlay } from "./components/ExportDialog";
 import { SettingsOverlay } from "./components/SettingsDialog";
@@ -124,7 +125,8 @@ function App() {
             title="Einstellungen (Strg+,)"
             onClick={() => useStore.getState().setSettingsOpen(true)}
           >
-            ⚙ Einstellungen
+            <Icon name="settings" />
+            Einstellungen
           </button>
         </>
       )}
@@ -177,6 +179,7 @@ function MainView() {
             title="Binder ein-/ausblenden"
             onClick={toggleBinder}
           >
+            <Icon name="panel-left" />
             Binder
           </button>
           <button
@@ -184,10 +187,12 @@ function MainView() {
             title="Planungsleiste (Personen, Orte, Notizen, Module) ein-/ausblenden"
             onClick={toggleResearch}
           >
+            <Icon name="notebook-pen" />
             Planung
           </button>
           <LayoutMenu />
           <button title="Fokusmodus" onClick={toggleFocusMode}>
+            <Icon name="maximize" />
             Fokus
           </button>
         </div>
@@ -197,6 +202,7 @@ function MainView() {
             title="Manuskript als DOCX, PDF, ePub, Markdown oder Text exportieren"
             onClick={() => setExportOpen(true)}
           >
+            <Icon name="book-open" />
             Exportieren
           </button>
           {snapshotNotice && <span className="small snapshot-notice">{snapshotNotice}</span>}
@@ -204,11 +210,18 @@ function MainView() {
             title="Aktuellen Stand des ganzen Projekts im Verlauf sichern"
             onClick={() => void takeSnapshot("Manueller Sicherungspunkt")}
           >
+            <Icon name="camera" />
             Sicherungspunkt
           </button>
-          <button title="Einstellungen (Strg+,)" onClick={() => setSettingsOpen(true)}>
-            ⚙
+          <button
+            className="icon-button"
+            title="Einstellungen (Strg+,)"
+            onClick={() => setSettingsOpen(true)}
+          >
+            <Icon name="settings" />
           </button>
+          {/* Bewusst mit Text: ein blankes × in der Titelleiste liest sich als
+              „Fenster schließen", nicht als „Projekt schließen". */}
           <button onClick={() => void closeProject()}>Projekt schließen</button>
         </div>
       </header>

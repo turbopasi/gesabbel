@@ -12,6 +12,10 @@ export interface ThemeColors {
   accent: string;
   accentText: string;
   card: string;
+  /** Markierungsfarbe des Autors: Textauswahl, Fundstellen, Hervorhebungen.
+   *  Bewusst getrennt vom Akzent — der Akzent gehört der App, das hier dem
+   *  Schreibenden. */
+  highlight: string;
 }
 
 export interface EditorSettings {
@@ -54,34 +58,40 @@ export interface AppSettings {
 // Themes
 // ---------------------------------------------------------------------------
 
-export const THEME_OPTIONS: { id: ThemeId; label: string }[] = [
-  { id: "system", label: "System" },
-  { id: "light", label: "Hell" },
-  { id: "dark", label: "Dunkel" },
-  { id: "sepia", label: "Sepia" },
-  { id: "midnight", label: "Mitternacht" },
-  { id: "custom", label: "Eigenes Theme" },
+/** `preview` speist die drei Farbpunkte auf den Theme-Knöpfen: Fläche, Papier,
+ *  Akzent — genau die drei Töne, an denen man ein Theme wiedererkennt. */
+export const THEME_OPTIONS: { id: ThemeId; label: string; preview: [string, string, string] }[] = [
+  { id: "system", label: "System", preview: ["#faf6ef", "#141310", "#2f5d50"] },
+  { id: "light", label: "Papier", preview: ["#faf6ef", "#fffdf9", "#2f5d50"] },
+  { id: "dark", label: "Nachtpapier", preview: ["#141310", "#1b1a16", "#3e7566"] },
+  { id: "sepia", label: "Sepia", preview: ["#f0e7d5", "#fdf8ec", "#7e561f"] },
+  { id: "midnight", label: "Mitternacht", preview: ["#0f1420", "#1a2235", "#5f89c9"] },
+  { id: "custom", label: "Eigenes Theme", preview: ["#faf6ef", "#fffdf9", "#b07d34"] },
 ];
 
-/** Helles Standard-Theme — dient auch als Ausgangspunkt für eigene Themes. */
+/** Helles Standard-Theme („Papier") — zugleich Ausgangspunkt für eigene Themes.
+ *  Die Werte müssen mit :root[data-theme="light"] in styles/tokens.css
+ *  übereinstimmen; von hier aus werden sie beim Übernehmen kopiert. */
 export const LIGHT_COLORS: ThemeColors = {
-  bg: "#f6f6f6",
-  text: "#1a1a1a",
-  panel: "#ececec",
-  border: "#d5d5d5",
-  accent: "#4a6da7",
-  accentText: "#ffffff",
-  card: "#fffdf5",
+  bg: "#faf6ef",
+  text: "#2a2620",
+  panel: "#f2ede3",
+  border: "#dcd3c3",
+  accent: "#2f5d50",
+  accentText: "#fffdf9",
+  card: "#fffdf9",
+  highlight: "#b07d34",
 };
 
 export const DARK_COLORS: ThemeColors = {
-  bg: "#1e1e1e",
-  text: "#f0f0f0",
-  panel: "#252526",
-  border: "#3a3a3a",
-  accent: "#5d84c4",
-  accentText: "#ffffff",
-  card: "#2d2d2d",
+  bg: "#141310",
+  text: "#e4ded1",
+  panel: "#1b1a16",
+  border: "#2e2c26",
+  accent: "#3e7566",
+  accentText: "#f5f0e6",
+  card: "#1b1a16",
+  highlight: "#d8b378",
 };
 
 export const COLOR_FIELDS: { key: keyof ThemeColors; label: string }[] = [
@@ -91,7 +101,8 @@ export const COLOR_FIELDS: { key: keyof ThemeColors; label: string }[] = [
   { key: "border", label: "Rahmen & Trennlinien" },
   { key: "accent", label: "Akzentfarbe" },
   { key: "accentText", label: "Text auf Akzentfarbe" },
-  { key: "card", label: "Karteikarten" },
+  { key: "card", label: "Karten & Manuskriptseite" },
+  { key: "highlight", label: "Markierungen & Fundstellen" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -99,10 +110,14 @@ export const COLOR_FIELDS: { key: keyof ThemeColors; label: string }[] = [
 // ---------------------------------------------------------------------------
 
 export const FONT_OPTIONS: { label: string; value: string }[] = [
+  // Literata, IBM Plex Sans und IBM Plex Mono liegen lokal in public/fonts.
+  { label: "Literata (Serife)", value: '"Literata", Charter, Georgia, serif' },
   { label: "Georgia (Serife)", value: 'Georgia, "Times New Roman", serif' },
   { label: "Times New Roman", value: '"Times New Roman", Times, serif' },
   { label: "Garamond", value: 'Garamond, "EB Garamond", Georgia, serif' },
+  { label: "IBM Plex Sans (serifenlos)", value: '"IBM Plex Sans", "Segoe UI", sans-serif' },
   { label: "Serifenlos (System)", value: 'system-ui, "Segoe UI", Roboto, sans-serif' },
+  { label: "IBM Plex Mono", value: '"IBM Plex Mono", ui-monospace, monospace' },
   { label: "Schreibmaschine (Monospace)", value: '"Courier New", ui-monospace, monospace' },
 ];
 
@@ -170,9 +185,11 @@ export function defaultSettings(): AppSettings {
     customTheme: { ...LIGHT_COLORS },
     editor: {
       fontFamily: FONT_OPTIONS[0].value,
-      fontSize: 17,
-      lineHeight: 1.7,
-      textWidth: 48,
+      // 18px auf ~34em Satzbreite: das Maß, bei dem eine Zeile in einem Blick
+      // erfasst wird, ohne dass das Auge am Zeilenende zurückspringen muss.
+      fontSize: 18,
+      lineHeight: 1.75,
+      textWidth: 38,
       cursorStyle: "standard",
       defaultAlignment: "left",
       hyphenation: true,
@@ -204,6 +221,16 @@ export function mergeSettings(loaded: unknown): AppSettings {
   };
 }
 
+/** Wahrgenommene Helligkeit eines #rrggbb-Werts — reicht, um „hell oder
+ *  dunkel?" zu entscheiden. */
+function isDark(hex: string): boolean {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return false;
+  const n = parseInt(m[1], 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 < 0.5;
+}
+
 const COLOR_VARS: Record<keyof ThemeColors, string> = {
   bg: "--bg",
   text: "--text",
@@ -212,6 +239,7 @@ const COLOR_VARS: Record<keyof ThemeColors, string> = {
   accent: "--accent",
   accentText: "--accent-text",
   card: "--card",
+  highlight: "--highlight",
 };
 
 /** Überträgt die Einstellungen auf CSS-Variablen bzw. das data-theme-Attribut. */
@@ -226,6 +254,15 @@ export function applySettings(s: AppSettings) {
   for (const key of Object.keys(COLOR_VARS) as (keyof ThemeColors)[]) {
     if (s.theme === "custom") root.style.setProperty(COLOR_VARS[key], s.customTheme[key]);
     else root.style.removeProperty(COLOR_VARS[key]);
+  }
+
+  // Nur bei eigenen Themes muss die App raten, ob sie hell oder dunkel ist:
+  // Betriebssystem-Elemente (Auswahllisten, Bildlaufleisten, Farbwähler)
+  // richten sich nach color-scheme, nicht nach unseren Variablen.
+  if (s.theme === "custom") {
+    root.style.setProperty("--scheme", isDark(s.customTheme.bg) ? "dark" : "light");
+  } else {
+    root.style.removeProperty("--scheme");
   }
 
   root.style.setProperty("--editor-font", s.editor.fontFamily);

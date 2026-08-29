@@ -3,6 +3,7 @@ import { ask } from "@tauri-apps/plugin-dialog";
 import { PANE_IDS, useStore } from "../store";
 import { findParentAndIndex, isDescendant } from "../tree";
 import { STATUS_LABEL, type BinderNode, type NodeStatus } from "../types";
+import { Icon } from "./Icon";
 
 /** ID des gerade gezogenen Nodes (modulweit, DnD läuft nie parallel). */
 let draggedId: string | null = null;
@@ -24,7 +25,8 @@ export function Binder() {
           title="Neues Kapitel"
           onClick={() => void createNode(null, "chapter", "Neues Kapitel")}
         >
-          + Kapitel
+          <Icon name="plus" size={14} />
+          Kapitel
         </button>
       </div>
       <ul className="binder-tree">
@@ -165,7 +167,7 @@ function BinderItem({ node }: { node: BinderNode }) {
               {node.color && (
                 <span className="color-dot" style={{ background: node.color }} />
               )}
-              {node.kind === "chapter" ? "📁 " : "📄 "}
+              <Icon name={node.kind === "chapter" ? "folder" : "file-text"} size={14} />
               {node.title}
             </span>
             <span className="binder-actions" onClick={(e) => e.stopPropagation()}>
@@ -177,11 +179,11 @@ function BinderItem({ node }: { node: BinderNode }) {
                   title="Neue Szene in diesem Kapitel"
                   onClick={() => void createNode(node.id, "scene", "Neue Szene")}
                 >
-                  +
+                  <Icon name="plus" size={14} />
                 </button>
               )}
               <button title="Löschen" onClick={() => void confirmDelete()}>
-                🗑
+                <Icon name="trash-2" size={14} />
               </button>
             </span>
           </>

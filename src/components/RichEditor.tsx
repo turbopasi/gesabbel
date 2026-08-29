@@ -8,6 +8,7 @@ import { DocImage, imagePasteHandler } from "./DocImage";
 import { PlanTag } from "./PlanTag";
 import { PlanTagCommand } from "./planTagCommand";
 import { PlanTagOverlay } from "./PlanTagOverlay";
+import { Icon } from "./Icon";
 import {
   AlignedHeading,
   AlignedParagraph,
@@ -197,13 +198,19 @@ export function Toolbar({ editor }: { editor: Editor }) {
 
   return (
     <div className="toolbar">
-      {btn("F", "Fett (Strg+B)", state.bold, () => chain().toggleBold().run())}
-      {btn("K", "Kursiv (Strg+I)", state.italic, () => chain().toggleItalic().run())}
+      {btn(<Icon name="bold" size={14} />, "Fett (Strg+B)", state.bold, () =>
+        chain().toggleBold().run(),
+      )}
+      {btn(<Icon name="italic" size={14} />, "Kursiv (Strg+I)", state.italic, () =>
+        chain().toggleItalic().run(),
+      )}
       <span className="sep" />
       {btn("H1", "Überschrift 1", state.h1, () => chain().toggleHeading({ level: 1 }).run())}
       {btn("H2", "Überschrift 2", state.h2, () => chain().toggleHeading({ level: 2 }).run())}
       {btn("H3", "Überschrift 3", state.h3, () => chain().toggleHeading({ level: 3 }).run())}
-      {btn("¶", "Absatz", false, () => chain().setParagraph().run())}
+      {btn(<Icon name="pilcrow" size={14} />, "Absatz", false, () =>
+        chain().setParagraph().run(),
+      )}
       <span className="sep" />
       {btn(
         <AlignIcon variant="left" />,
@@ -230,8 +237,20 @@ export function Toolbar({ editor }: { editor: Editor }) {
         () => chain().toggleTextAlign("justify").run(),
       )}
       <span className="sep" />
-      {btn("↶", "Rückgängig (Strg+Z)", false, () => chain().undo().run(), !state.canUndo)}
-      {btn("↷", "Wiederholen (Strg+Y)", false, () => chain().redo().run(), !state.canRedo)}
+      {btn(
+        <Icon name="undo-2" size={14} />,
+        "Rückgängig (Strg+Z)",
+        false,
+        () => chain().undo().run(),
+        !state.canUndo,
+      )}
+      {btn(
+        <Icon name="redo-2" size={14} />,
+        "Wiederholen (Strg+Y)",
+        false,
+        () => chain().redo().run(),
+        !state.canRedo,
+      )}
     </div>
   );
 }
@@ -257,12 +276,14 @@ function StatusBar({ editor, paneId }: { editor: Editor; paneId: PaneId }) {
     saved: "Gespeichert",
     dirty: "Ungespeichert …",
     saving: "Speichert …",
-    conflict: "⚠ Konflikt",
+    conflict: "Konflikt",
   };
 
   return (
     <footer className="statusbar">
-      <span>{saveLabel[saveState]}</span>
+      <span className={saveState === "conflict" ? "save-state conflict" : "save-state"}>
+        {saveLabel[saveState]}
+      </span>
       <span className="spacer" />
       <span>{stats.words.toLocaleString("de-DE")} Wörter</span>
       <span title="Zeichen inkl. Leerzeichen / ohne Leerzeichen">
@@ -285,13 +306,14 @@ function StatusBar({ editor, paneId }: { editor: Editor; paneId: PaneId }) {
         title="Typewriter-Scrolling: Cursorzeile bleibt mittig"
         onClick={toggleTypewriter}
       >
-        ⌨
+        <Icon name="keyboard" size={14} />
       </button>
       <button
         title="Verlauf dieser Szene: frühere Versionen ansehen und wiederherstellen"
         onClick={() => sceneId && setHistoryFor(sceneId)}
       >
-        🕘 Verlauf
+        <Icon name="history" size={14} />
+        Verlauf
       </button>
     </footer>
   );

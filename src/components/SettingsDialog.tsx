@@ -87,9 +87,14 @@ function AppearanceTab() {
         {THEME_OPTIONS.map((t) => (
           <button
             key={t.id}
-            className={settings.theme === t.id ? "on" : ""}
+            className={`theme-swatch-button ${settings.theme === t.id ? "on" : ""}`}
             onClick={() => pickTheme(t.id)}
           >
+            <span className="theme-preview" aria-hidden="true">
+              {t.preview.map((c, i) => (
+                <span key={i} style={{ background: c }} />
+              ))}
+            </span>
             {t.label}
           </button>
         ))}

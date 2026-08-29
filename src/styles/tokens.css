@@ -1,0 +1,304 @@
+/* --------------------------------------------------------------------------
+   Design-Tokens — nach dem „Manuscript"-Designsystem.
+
+   Aufbau in drei Schichten:
+
+   1. ROHSKALEN  (--paper-*, --ink-*, --pine-*, --brass-*, Statusfarben)
+      Nur zum Definieren von Themes da. Komponenten benutzen sie nie direkt.
+
+   2. THEMES     Jedes Theme setzt ausschließlich die sieben Farben, die auch
+      in den Einstellungen editierbar sind (--bg, --text, --panel, --border,
+      --accent, --accent-text, --card) plus --highlight (Autorenmarkierung).
+      „custom" setzt dieselben Variablen inline per JS (src/settings.ts).
+
+   3. ABLEITUNGEN Alle semantischen Aliase (--surface-*, --text-*, --border-*)
+      werden aus Schicht 2 berechnet. Dadurch wirkt jedes eigene Theme
+      automatisch auf die ganze Oberfläche — es gibt keine Farbe, die am
+      Theming vorbeiläuft.
+   -------------------------------------------------------------------------- */
+
+:root {
+  /* --- 1. Rohskalen: warme Papiertöne --- */
+  --paper-0: #fffdf9;
+  --paper-1: #faf6ef;
+  --paper-2: #f2ede3;
+  --paper-3: #e7e0d3;
+  --paper-4: #dcd3c3;
+
+  /* --- Rohskalen: Tinte --- */
+  --ink-0: #15130f;
+  --ink-1: #2a2620;
+  --ink-2: #4a443a;
+  --ink-3: #6e6759;
+  --ink-4: #948c7c;
+  --ink-5: #b6ae9e;
+
+  /* --- Rohskalen: Kiefer (die Stimme der App) --- */
+  --pine-800: #143028;
+  --pine-700: #1f4a3e;
+  --pine-600: #2f5d50;
+  --pine-500: #3e7566;
+  --pine-300: #8fb5a9;
+  --pine-100: #dce8e3;
+  --pine-50: #edf4f1;
+
+  /* --- Rohskalen: Messing (die Marken des Autors) --- */
+  --brass-700: #7e561f;
+  --brass-600: #9a6b2a;
+  --brass-500: #b07d34;
+  --brass-300: #d8b378;
+  --brass-100: #f3e5cc;
+
+  /* --- Rohskalen: Status (entsättigt — nichts schreit) --- */
+  --green-600: #2f6b45;
+  --amber-600: #a76b12;
+  --red-600: #9b2c2c;
+  --blue-600: #2b5578;
+
+  /* --- Typografie --- */
+  --font-serif: "Literata", Charter, "Iowan Old Style", Georgia, serif;
+  --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, Menlo, monospace;
+
+  --text-2xs: 11px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 14px;
+  --text-lg: 16px;
+  --text-xl: 18px;
+  --text-2xl: 21px;
+  --text-3xl: 26px;
+  --text-4xl: 32px;
+  --text-5xl: 42px;
+
+  --leading-tight: 1.15;
+  --leading-snug: 1.3;
+  --leading-normal: 1.5;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  --tracking-tight: -0.015em;
+  --tracking-caps: 0.09em;
+
+  /* Semantische Schriftrollen */
+  --type-display: var(--weight-semibold) var(--text-4xl) / var(--leading-tight) var(--font-serif);
+  --type-title: var(--weight-semibold) var(--text-2xl) / var(--leading-snug) var(--font-serif);
+  --type-heading: var(--weight-semibold) var(--text-xl) / var(--leading-snug) var(--font-serif);
+  --type-subheading: var(--weight-semibold) var(--text-md) / var(--leading-snug) var(--font-sans);
+  --type-ui: var(--weight-regular) var(--text-sm) / var(--leading-normal) var(--font-sans);
+  --type-ui-md: var(--weight-regular) var(--text-md) / var(--leading-normal) var(--font-sans);
+  --type-small: var(--weight-regular) var(--text-xs) / var(--leading-normal) var(--font-sans);
+  --type-mono: var(--weight-regular) var(--text-xs) / var(--leading-normal) var(--font-mono);
+
+  /* --- Raster, Radien, Höhen --- */
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 12px;
+  --space-6: 16px;
+  --space-7: 20px;
+  --space-8: 24px;
+  --space-9: 32px;
+  --space-10: 40px;
+  --space-11: 56px;
+
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-pill: 999px;
+
+  --control-height-sm: 26px;
+  --control-height-md: 32px;
+  --control-height-lg: 38px;
+  --control-pad-x-sm: 8px;
+  --control-pad-x-md: 12px;
+
+  --titlebar-height: 40px;
+  --toolbar-height: 40px;
+  --statusbar-height: 30px;
+  --icon-sm: 14px;
+  --icon-md: 16px;
+  --icon-lg: 20px;
+
+  /* --- Bewegung: flach und entschieden, nie verspielt --- */
+  --duration-instant: 80ms;
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 260ms;
+  --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --transition-control: background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-instant: 0ms;
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   2. THEMES — jedes setzt nur die editierbaren Farben.
+   Ohne data-theme gilt „System": helle Basis + prefers-color-scheme.
+   -------------------------------------------------------------------------- */
+
+:root,
+:root[data-theme="light"] {
+  --scheme: light;
+  --bg: #faf6ef;
+  --text: #2a2620;
+  --panel: #f2ede3;
+  --border: #dcd3c3;
+  --accent: #2f5d50;
+  --accent-text: #fffdf9;
+  --card: #fffdf9;
+  --highlight: #b07d34;
+}
+
+/* Dunkle Themes kippen zusätzlich die Richtung der abgeleiteten Töne. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --scheme: dark;
+    --bg: #141310;
+    --text: #e4ded1;
+    --panel: #1b1a16;
+    --border: #2e2c26;
+    --accent: #3e7566;
+    --accent-text: #f5f0e6;
+    --card: #1b1a16;
+    --highlight: #d8b378;
+  }
+}
+
+:root[data-theme="dark"] {
+  --scheme: dark;
+  --bg: #141310;
+  --text: #e4ded1;
+  --panel: #1b1a16;
+  --border: #2e2c26;
+  --accent: #3e7566;
+  --accent-text: #f5f0e6;
+  --card: #1b1a16;
+  --highlight: #d8b378;
+}
+
+:root[data-theme="sepia"] {
+  --scheme: light;
+  --bg: #f0e7d5;
+  --text: #3f342a;
+  --border: #d8c9a3;
+  --panel: #e8dcc4;
+  --accent: #7e561f;
+  --accent-text: #fbf7ee;
+  --card: #fdf8ec;
+  --highlight: #2f5d50;
+}
+
+:root[data-theme="midnight"] {
+  --scheme: dark;
+  --bg: #0f1420;
+  --text: #dbe1ee;
+  --border: #26314a;
+  --panel: #161d2e;
+  --accent: #5f89c9;
+  --accent-text: #0f1420;
+  --card: #1a2235;
+  --highlight: #d8b378;
+}
+
+/* --------------------------------------------------------------------------
+   3. ABLEITUNGEN — alles Weitere folgt aus den sieben Farben.
+   color-mix mit --text/--bg statt schwarz/weiß: dadurch stimmt die Richtung
+   („dunkler"/„heller") in hellen wie dunklen Themes automatisch.
+   -------------------------------------------------------------------------- */
+
+:root {
+  color-scheme: var(--scheme, light);
+
+  /* Flächen */
+  --surface-app: var(--bg);
+  --surface-card: var(--card);
+  --surface-rail: var(--panel);
+  /* Vertiefte Flächen mischen Richtung Rahmen, nicht Richtung Text: so kippt
+     die Richtung in dunklen Themes automatisch mit. */
+  --surface-sunken: color-mix(in oklab, var(--bg) 82%, var(--border));
+  --surface-hover: color-mix(in oklab, var(--text) 7%, transparent);
+  --surface-press: color-mix(in oklab, var(--text) 12%, transparent);
+  --surface-selected: color-mix(in oklab, var(--accent) 14%, var(--bg));
+  --scrim: color-mix(in oklab, var(--ink-0) 62%, transparent);
+
+  /* Text — Betonung läuft über Gewicht und Schriftart, nicht über „noch
+     dunkler als dunkel". --text ist die stärkste Stufe, alles andere weicht
+     Richtung Hintergrund zurück. */
+  --text-strong: var(--text);
+  --text-body: color-mix(in oklab, var(--text) 92%, var(--bg));
+  --text-muted: color-mix(in oklab, var(--text) 62%, var(--bg));
+  --text-faint: color-mix(in oklab, var(--text) 44%, var(--bg));
+
+  /* Rahmen */
+  --border-hairline: color-mix(in oklab, var(--border) 55%, transparent);
+  --border-subtle: var(--border);
+  --border-strong: color-mix(in oklab, var(--border) 65%, var(--text));
+  --border-focus: var(--accent);
+  --focus-ring: color-mix(in oklab, var(--accent) 34%, transparent);
+
+  /* Interaktion */
+  --accent-hover: color-mix(in oklab, var(--accent) 84%, var(--text));
+  --accent-press: color-mix(in oklab, var(--accent) 70%, var(--text));
+  --accent-soft: color-mix(in oklab, var(--accent) 16%, var(--bg));
+  --accent-on: var(--accent-text);
+  --highlight-soft: color-mix(in oklab, var(--highlight) 20%, var(--bg));
+
+  /* Status — an die Themehelligkeit angeglichen, damit ein fehlgeschlagenes
+     Backup nicht quer durch einen dunklen Raum schreit. */
+  --status-ok: color-mix(in oklab, var(--green-600) 76%, var(--text));
+  --status-ok-soft: color-mix(in oklab, var(--green-600) 18%, var(--bg));
+  --status-warn: color-mix(in oklab, var(--amber-600) 76%, var(--text));
+  --status-warn-soft: color-mix(in oklab, var(--amber-600) 20%, var(--bg));
+  --status-danger: color-mix(in oklab, var(--red-600) 76%, var(--text));
+  --status-danger-soft: color-mix(in oklab, var(--red-600) 18%, var(--bg));
+  --status-info: color-mix(in oklab, var(--blue-600) 76%, var(--text));
+  --status-info-soft: color-mix(in oklab, var(--blue-600) 18%, var(--bg));
+
+  /* Manuskriptseite — das eine „Objekt auf dem Schreibtisch". */
+  --editor-paper: var(--card);
+  --editor-rule: color-mix(in oklab, var(--text) 12%, transparent);
+  --editor-selection: color-mix(in oklab, var(--highlight) 26%, transparent);
+
+  /* Schatten: warm getönt, geringe Streuung. Nichts schwebt weit. */
+  --shadow-1: 0 1px 1px color-mix(in oklab, var(--ink-0) 5%, transparent),
+    0 1px 3px color-mix(in oklab, var(--ink-0) 5%, transparent);
+  --shadow-2: 0 1px 2px color-mix(in oklab, var(--ink-0) 6%, transparent),
+    0 4px 10px color-mix(in oklab, var(--ink-0) 8%, transparent);
+  --shadow-3: 0 2px 4px color-mix(in oklab, var(--ink-0) 8%, transparent),
+    0 12px 28px color-mix(in oklab, var(--ink-0) 14%, transparent);
+  --shadow-page: 0 1px 2px color-mix(in oklab, var(--ink-0) 6%, transparent),
+    0 10px 30px color-mix(in oklab, var(--ink-0) 8%, transparent);
+  --focus-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* In dunklen Themes tragen weiche, breite Schatten nicht — dort zählt Tiefe. */
+:root[data-theme="dark"],
+:root[data-theme="midnight"] {
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 2px 6px rgba(0, 0, 0, 0.45);
+  --shadow-3: 0 12px 32px rgba(0, 0, 0, 0.55);
+  --shadow-page: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-2: 0 2px 6px rgba(0, 0, 0, 0.45);
+    --shadow-3: 0 12px 32px rgba(0, 0, 0, 0.55);
+    --shadow-page: 0 12px 32px rgba(0, 0, 0, 0.5);
+  }
+}

@@ -4,6 +4,7 @@ import { api } from "../api";
 import { useStore } from "../store";
 import { findNode, findParentAndIndex } from "../tree";
 import { saveClipboardImage, useDocImage } from "./DocImage";
+import { Icon } from "./Icon";
 import {
   COLOR_PRESETS,
   STATUS_LABEL,
@@ -158,7 +159,7 @@ function Card({ node, parentId }: { node: BinderNode; parentId: string }) {
           else void selectChapter(node.id);
         }}
       >
-        {node.kind === "chapter" ? "📁 " : ""}
+        {node.kind === "chapter" && <Icon name="folder" size={14} />}
         {node.title}
       </div>
 
@@ -189,14 +190,14 @@ function Card({ node, parentId }: { node: BinderNode; parentId: string }) {
           title="Kartenbild wählen … (oder Karte anklicken und Screenshot mit Strg+V einfügen)"
           onClick={() => void chooseImage()}
         >
-          🖼
+          <Icon name="image" size={14} />
         </button>
         <button
           className={showMeta ? "on" : ""}
           title="Farbe & Tags"
           onClick={() => setShowMeta(!showMeta)}
         >
-          ⋯
+          <Icon name="ellipsis" size={14} />
         </button>
       </div>
 
@@ -217,7 +218,7 @@ function Card({ node, parentId }: { node: BinderNode; parentId: string }) {
               title="Keine Farbe"
               onClick={() => void updateNodeMeta(node.id, { color: "" })}
             >
-              ×
+              <Icon name="x" size={12} />
             </button>
           </div>
           <input

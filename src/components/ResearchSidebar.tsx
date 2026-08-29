@@ -4,11 +4,12 @@ import { api } from "../api";
 import { PANE_IDS, useStore, type PaneResearchKind } from "../store";
 import { RESEARCH_KIND_LABELS } from "./ResearchPane";
 import type { EntityKind } from "../types";
+import { Icon, type IconName } from "./Icon";
 
-const KIND_ICON: Record<PaneResearchKind, string> = {
-  characters: "👤",
-  locations: "📍",
-  notes: "🗒",
+const KIND_ICON: Record<PaneResearchKind, IconName> = {
+  characters: "user",
+  locations: "map-pin",
+  notes: "notebook-text",
 };
 
 type StoreState = ReturnType<typeof useStore.getState>;
@@ -58,7 +59,9 @@ function ModuleGroup() {
   return (
     <div className="research-group">
       <div className="research-group-header" onClick={() => setCollapsed(!collapsed)}>
-        <span className="disclosure">{collapsed ? "▸" : "▾"}</span>
+        <span className="disclosure">
+          <Icon name={collapsed ? "chevron-right" : "chevron-down"} size={12} />
+        </span>
         <span>Module</span>
       </div>
       {!collapsed && (
@@ -137,7 +140,9 @@ function ResearchGroup({ kind }: { kind: PaneResearchKind }) {
   return (
     <div className="research-group">
       <div className="research-group-header" onClick={() => setCollapsed(!collapsed)}>
-        <span className="disclosure">{collapsed ? "▸" : "▾"}</span>
+        <span className="disclosure">
+          <Icon name={collapsed ? "chevron-right" : "chevron-down"} size={12} />
+        </span>
         <span>{labels.plural}</span>
         <button
           title={`Neue ${labels.singular} anlegen`}
@@ -240,7 +245,8 @@ function ResearchItem({ kind, id, name }: { kind: PaneResearchKind; id: string; 
       ) : (
         <>
           <span className="item-name">
-            {KIND_ICON[kind]} {name}
+            <Icon name={KIND_ICON[kind]} size={14} />
+            {name}
           </span>
           <button
             className="row-delete"
@@ -250,7 +256,7 @@ function ResearchItem({ kind, id, name }: { kind: PaneResearchKind; id: string; 
               void confirmDelete();
             }}
           >
-            🗑
+            <Icon name="trash-2" size={14} />
           </button>
         </>
       )}

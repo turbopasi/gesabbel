@@ -8,6 +8,7 @@ import { api } from "../api";
 import { PLAN_TAG_LABEL, type PlanTagKind } from "../planTags";
 import { useStore, type PaneId } from "../store";
 import type { Mention } from "../types";
+import { Icon } from "./Icon";
 
 const SOURCE_ICON: Record<Mention["source"], string> = {
   scene: "📄",
@@ -72,11 +73,14 @@ export function MentionsBar({
             if (!open) void load();
           }}
         >
-          <span className="mentions-caret">{open ? "▾" : "▸"}</span>
-          🔗 {count === 1 ? "1 Erwähnung" : `${count} Erwähnungen`} im Text
+          <span className="mentions-caret">
+            <Icon name={open ? "chevron-down" : "chevron-right"} size={12} />
+          </span>
+          <Icon name="link-2" size={14} />
+          {count === 1 ? "1 Erwähnung" : `${count} Erwähnungen`} im Text
         </button>
         <button title="Erwähnungen neu suchen" onClick={() => void load()}>
-          ↻
+          <Icon name="rotate-cw" size={14} />
         </button>
       </div>
       {open && (

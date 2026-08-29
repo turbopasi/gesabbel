@@ -4,6 +4,7 @@ import { api } from "../api";
 import { useStore } from "../store";
 import { SceneLinks } from "./SceneLinks";
 import type { TimelineEvent } from "../types";
+import { Icon } from "./Icon";
 
 export function TimelinePanel() {
   const [events, setEvents] = useState<TimelineEvent[] | null>(null);
@@ -37,7 +38,10 @@ export function TimelinePanel() {
     <div className="timeline">
       <div className="timeline-header">
         <h2>Zeitstrahl</h2>
-        <button onClick={() => void addEvent()}>+ Ereignis</button>
+        <button onClick={() => void addEvent()}>
+          <Icon name="plus" size={14} />
+          Ereignis
+        </button>
       </div>
       {events.length === 0 && (
         <p className="muted">
@@ -108,13 +112,13 @@ function EventCard({
           />
           <span className="timeline-actions">
             <button disabled={first} title="Nach oben" onClick={() => onMove(-1)}>
-              ↑
+              <Icon name="arrow-up" size={14} />
             </button>
             <button disabled={last} title="Nach unten" onClick={() => onMove(1)}>
-              ↓
+              <Icon name="arrow-down" size={14} />
             </button>
             <button title="Löschen" onClick={onDelete}>
-              🗑
+              <Icon name="trash-2" size={14} />
             </button>
           </span>
         </div>

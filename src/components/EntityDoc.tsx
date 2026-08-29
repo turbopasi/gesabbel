@@ -9,6 +9,7 @@ import { DocEditor } from "./DocEditor";
 import { MentionsBar } from "./MentionsBar";
 import { SceneLinks } from "./SceneLinks";
 import type { Entity, EntityKind } from "../types";
+import { Icon } from "./Icon";
 
 export function EntityDoc({
   kind,
@@ -104,10 +105,10 @@ export function EntityDoc({
             title="Bild und Szenen-Verknüpfungen"
             onClick={() => setMetaOpen(!metaOpen)}
           >
-            ⓘ
+            <Icon name="info" size={14} />
           </button>
           <button title="Löschen" onClick={() => void confirmDelete()}>
-            🗑
+            <Icon name="trash-2" size={14} />
           </button>
         </div>
         {metaOpen && (
