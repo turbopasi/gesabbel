@@ -92,7 +92,7 @@ Erledigt inzwischen auch:
 - **Name festgelegt: Gesabbel.** „Schreibsoftware" war Platzhalter und steht nur
   noch dort, wo es als Gattungsbegriff gemeint ist. Umbenannt wurden
   Produktname, Fenstertitel, npm- und Cargo-Paket (`gesabbel`, `gesabbel_lib`),
-  die Bundle-Identifier (`com.ois-media.gesabbel`) sowie die
+  die Bundle-Identifier (`io.github.turbopasi.gesabbel`) sowie die
   `localStorage`-Schlüssel (`gesabbel.*`).
 
 Offen:
