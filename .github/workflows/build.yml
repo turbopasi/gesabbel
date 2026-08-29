@@ -1,10 +1,16 @@
 name: Build
 
+# Reine Text-Änderungen lösen keinen vollen Release-Build auf zwei Runnern aus.
+# Sobald ein Commit auch nur eine andere Datei anfasst — insbesondere
+# package-lock.json oder Cargo.lock — läuft der Workflow samt Notices-Prüfung
+# wie gehabt.
 on:
   push:
     branches: [main]
+    paths-ignore: ["**.md", "LICENSE", "NOTICE", "docs/**"]
   pull_request:
     branches: [main]
+    paths-ignore: ["**.md", "LICENSE", "NOTICE", "docs/**"]
 
 jobs:
   build:
@@ -40,8 +46,14 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      # Die Schlüssel sind nötig, weil `createUpdaterArtifacts` aktiv ist: Tauri
+      # bricht ab, wenn ein öffentlicher Schlüssel konfiguriert ist, aber kein
+      # privater zum Signieren bereitsteht.
       - name: Build Tauri app
         run: npm run tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
       # Läuft erst nach dem Build, weil der Generator die Lizenztexte aus der
       # entpackten Cargo-Registry liest. Schlägt fehl, sobald eine Abhängigkeit

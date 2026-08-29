@@ -24,9 +24,21 @@
       "csp": null
     }
   },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/turbopasi/gesabbel/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDczMTZFODdGQ0JCQjAyQjMKUldTekFydkxmK2dXYzBtMmt6WEJnQTJreXNQVkhxWkoxbmdabjBZZ3B5Tms0YUthdCtSWndSSTUK",
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  },
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "copyright": "Copyright 2026 Pascal Lamers",
     "license": "Apache-2.0",
     "licenseFile": "../LICENSE",

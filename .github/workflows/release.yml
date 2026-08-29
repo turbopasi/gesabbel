@@ -1,0 +1,58 @@
+# Baut aus einem Versions-Tag ein GitHub Release mit Windows-Installern.
+#
+# Ablauf: Tag `v0.1.0` pushen -> dieser Workflow baut MSI und NSIS-Setup,
+# signiert sie mit dem Update-Schlüssel, legt ein Release als Entwurf an und
+# hängt Artefakte plus `latest.json` an. Das `latest.json` ist genau die Datei,
+# die der Updater in der App unter
+# `releases/latest/download/latest.json` abfragt.
+#
+# Das Release entsteht als Entwurf: erst nach dem Veröffentlichen ist es
+# `releases/latest`, und erst dann sehen bestehende Installationen das Update.
+# So lässt sich der Installer vorher noch selbst ausprobieren.
+#
+# Vorerst nur Windows — Linux/macOS ergänzen, sobald dort getestet werden kann.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: Gesabbel ${{ github.ref_name }}
+          releaseBody: |
+            Windows-Installer unten unter „Assets“ — `.exe` (Setup) oder `.msi`.
+
+            Beim ersten Start warnt Windows SmartScreen vor einem unbekannten
+            Herausgeber; das Programm ist nicht signiert. Über „Weitere
+            Informationen“ → „Trotzdem ausführen“ lässt sich das bestätigen.
+          releaseDraft: true
+          prerelease: false
+          includeUpdaterJson: true

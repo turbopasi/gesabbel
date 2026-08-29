@@ -1,5 +1,5 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="public/brand/gesabbel-wordmark-on-dark.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/brand/gesabbel-wordmark-on-dark.svg">
   <img src="public/brand/gesabbel-wordmark.svg" alt="Gesabbel" width="320">
 </picture>
 

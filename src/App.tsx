@@ -15,6 +15,7 @@ import { Icon } from "./components/Icon";
 import { HistoryOverlay } from "./components/HistoryPanel";
 import { ExportOverlay } from "./components/ExportDialog";
 import { SettingsOverlay } from "./components/SettingsDialog";
+import { UpdateBanner } from "./components/UpdateBanner";
 import "./App.css";
 
 function App() {
@@ -111,6 +112,7 @@ function App() {
         <ConflictBanner key={id} paneId={id} />
       ))}
       <ExternalChangesBanner />
+      <UpdateBanner />
       <QuickNav />
       <HistoryOverlay />
       <ExportOverlay />

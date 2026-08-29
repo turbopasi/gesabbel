@@ -2202,6 +2202,12 @@ li.chapter > .binder-row > .binder-title {
   box-shadow: inset 3px 0 0 0 var(--status-warn);
 }
 
+.banner.info {
+  background: var(--status-info-soft);
+  color: var(--text-strong);
+  box-shadow: inset 3px 0 0 0 var(--status-info);
+}
+
 .banner > span {
   flex: 1;
   min-width: 12rem;
