@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { api, sceneRelPath } from "./api";
+import { clearPlanTagAvatars } from "./components/planTagInfo";
 import {
   applySettings,
   defaultSettings,
@@ -28,6 +29,18 @@ export const PANES_FOR_MODE: Record<LayoutMode, PaneId[]> = {
   rightSplit: ["leftTop", "rightTop", "rightBottom"],
   grid: PANE_IDS,
 };
+
+/** Auswählbares Ziel für Planungs-Tags (Person, Ort, Notiz). */
+export interface PlanIndexEntry {
+  id: string;
+  name: string;
+  /** Person/Ort mit hinterlegtem Bild — für die Vorschau beim Überfahren. */
+  hasImage: boolean;
+}
+
+export type PlanIndex = Record<PaneResearchKind, PlanIndexEntry[]>;
+
+const emptyPlanIndex = (): PlanIndex => ({ characters: [], locations: [], notes: [] });
 
 export interface Pane {
   sceneId: string | null;
@@ -132,9 +145,21 @@ interface Store {
   /** Öffnet Person/Ort/Notiz in einem Pane (id = null → leere Auswahl). */
   openResearchInPane: (paneId: PaneId, kind: PaneResearchKind, id: string | null) => Promise<void>;
   setPaneResearchId: (paneId: PaneId, id: string | null) => void;
+  /** Öffnet Person/Ort/Notiz in einem anderen sichtbaren Pane (Klick auf einen
+   *  Planungs-Tag im Text) — teilt notfalls das Layout auf. */
+  openResearchNextTo: (
+    paneId: PaneId,
+    kind: PaneResearchKind,
+    id: string,
+  ) => Promise<void>;
+  /** Wie `openResearchNextTo`, nur für eine Szene (Sprung aus einer Fundstelle). */
+  openSceneNextTo: (paneId: PaneId, sceneId: string) => Promise<void>;
   /** Zähler als Refresh-Signal nach Anlegen/Speichern/Löschen von Recherche-Daten. */
   researchVersion: number;
   touchResearch: () => void;
+  /** Personen/Orte/Notizen für die Tag-Auswahl und die Hover-Vorschau. */
+  planIndex: PlanIndex;
+  refreshPlanIndex: () => Promise<void>;
   toggleFocusMode: () => void;
   setFocusMode: (on: boolean) => void;
   toggleTypewriter: () => void;
@@ -181,7 +206,18 @@ export const useStore = create<Store>((set, get) => {
 
   const fail = (e: unknown) => set({ error: String(e) });
 
-  const resetView = (project: ProjectInfo | null) =>
+  /** Bereich für einen Sprung aus `paneId` heraus — bevorzugt einer, in dem
+   *  gerade kein Text bearbeitet wird; im Einzel-Layout wird aufgeteilt. */
+  const neighbourPane = async (paneId: PaneId): Promise<PaneId> => {
+    const visible = PANES_FOR_MODE[get().layoutMode];
+    const free = visible.find((p) => p !== paneId && !get().panes[p].sceneId);
+    const other = free ?? visible.find((p) => p !== paneId);
+    if (other) return other;
+    await get().setLayoutMode("cols");
+    return paneId === "rightTop" ? "leftTop" : "rightTop";
+  };
+
+  const resetView = (project: ProjectInfo | null) => {
     set({
       project,
       panes: emptyPanes(),
@@ -189,6 +225,8 @@ export const useStore = create<Store>((set, get) => {
       activePane: "leftTop" as PaneId,
       externalChanges: [],
     });
+    void get().refreshPlanIndex();
+  };
 
   return {
     project: null,
@@ -413,8 +451,50 @@ export const useStore = create<Store>((set, get) => {
 
     setPaneResearchId: (paneId, id) => patchPane(paneId, { researchId: id }),
 
+    openResearchNextTo: async (paneId, kind, id) => {
+      const target = await neighbourPane(paneId);
+      await get().openResearchInPane(target, kind, id);
+    },
+
+    openSceneNextTo: async (paneId, sceneId) => {
+      const target = await neighbourPane(paneId);
+      set({ activePane: target });
+      await get().selectScene(sceneId);
+    },
+
     researchVersion: 0,
-    touchResearch: () => set((s) => ({ researchVersion: s.researchVersion + 1 })),
+    touchResearch: () => {
+      set((s) => ({ researchVersion: s.researchVersion + 1 }));
+      void get().refreshPlanIndex();
+    },
+
+    planIndex: emptyPlanIndex(),
+
+    refreshPlanIndex: async () => {
+      clearPlanTagAvatars();
+      if (!get().project) {
+        set({ planIndex: emptyPlanIndex() });
+        return;
+      }
+      try {
+        const [characters, locations, notes] = await Promise.all([
+          api.listEntities("characters"),
+          api.listEntities("locations"),
+          api.listNotes(),
+        ]);
+        const fromEntities = (list: typeof characters) =>
+          list.map((e) => ({ id: e.id, name: e.name, hasImage: !!e.image }));
+        set({
+          planIndex: {
+            characters: fromEntities(characters),
+            locations: fromEntities(locations),
+            notes: notes.map((n) => ({ id: n.id, name: n.title, hasImage: false })),
+          },
+        });
+      } catch {
+        // Der Index ist nur Komfort — ein Fehler darf den Editor nicht stören.
+      }
+    },
 
     toggleFocusMode: () => set((s) => ({ focusMode: !s.focusMode })),
     setFocusMode: (on) => set({ focusMode: on }),

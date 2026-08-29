@@ -59,6 +59,18 @@ export interface TimelineEvent {
   sceneIds?: string[];
 }
 
+/** Fundstelle eines Planungs-Tags im Text (Rückverlinkung). */
+export interface Mention {
+  /** Dokumentart, in der der Tag steht. */
+  source: "scene" | "note" | "character" | "location";
+  sourceId: string;
+  sourceTitle: string;
+  /** Das getaggte Wort im Fließtext ("Er", "Seine", "Jonas", …). */
+  label: string;
+  /** Umgebender Text als Vorschau. */
+  context: string;
+}
+
 export interface SearchHit {
   kind: "scene" | "note" | "character" | "location" | "event";
   id: string;

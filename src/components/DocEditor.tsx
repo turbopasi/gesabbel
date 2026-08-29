@@ -4,20 +4,24 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
-import { useStore } from "../store";
+import { useStore, type PaneId } from "../store";
 import { docExtensions, getMarkdown, Toolbar } from "./RichEditor";
 import { imagePasteHandler } from "./DocImage";
+import { PlanTagOverlay } from "./PlanTagOverlay";
 import type { WriteResult } from "../types";
 
 const AUTOSAVE_MS = 2000;
 
 export function DocEditor({
   docKey,
+  paneId,
   read,
   write,
 }: {
   /** Eindeutig pro Dokument — Wechsel remountet den Editor. */
   docKey: string;
+  /** Bereich, in dem dieses Dokument liegt (für Sprünge zu verlinkten Einträgen). */
+  paneId: PaneId;
   read: () => Promise<string>;
   write: (content: string, force?: boolean) => Promise<WriteResult>;
 }) {
@@ -40,15 +44,23 @@ export function DocEditor({
 
   if (content === null) return <div className="doc-editor" />;
   return (
-    <DocEditorInstance key={docKey} initialContent={content} read={read} write={write} />
+    <DocEditorInstance
+      key={docKey}
+      paneId={paneId}
+      initialContent={content}
+      read={read}
+      write={write}
+    />
   );
 }
 
 function DocEditorInstance({
+  paneId,
   initialContent,
   read,
   write,
 }: {
+  paneId: PaneId;
   initialContent: string;
   read: () => Promise<string>;
   write: (content: string, force?: boolean) => Promise<WriteResult>;
@@ -131,6 +143,7 @@ function DocEditorInstance({
       )}
       <Toolbar editor={editor} />
       <EditorContent editor={editor} className="editor-content doc-editor-content" />
+      <PlanTagOverlay editor={editor} paneId={paneId} />
       <footer className="statusbar">
         <span>
           {status === "saved"

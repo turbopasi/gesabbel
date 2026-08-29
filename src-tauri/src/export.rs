@@ -1009,6 +1009,22 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
+    /// Planungs-Tags stehen als Markdown-Link mit eigenem Schema im Manuskript
+    /// (`[Er](person:jonas-…)`) — im Export darf davon nur das Wort übrig bleiben.
+    #[test]
+    fn plan_tags_export_as_plain_text() {
+        let blocks = parse_markdown(
+            "Am Abend kam [Er](person:jonas-3f2a1b) durch [den Wald](location:wald-9c11ab).",
+        );
+        let Block::Paragraph(inlines) = &blocks[0] else {
+            panic!("kein Absatz");
+        };
+        assert_eq!(inline_to_text(inlines), "Am Abend kam Er durch den Wald.");
+        let md = inline_to_md(inlines);
+        assert!(!md.contains("person:"), "Tag-Ziel im Export: {md}");
+        assert!(!md.contains("location:"), "Tag-Ziel im Export: {md}");
+    }
+
     #[test]
     fn scene_titles_as_headings() {
         let dir = std::env::temp_dir().join(format!("autorproj-test-{}", uuid::Uuid::new_v4()));

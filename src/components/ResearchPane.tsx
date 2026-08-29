@@ -3,6 +3,7 @@ import { api } from "../api";
 import { useStore, type PaneId, type PaneResearchKind } from "../store";
 import { EntityDoc } from "./EntityDoc";
 import { DocEditor } from "./DocEditor";
+import { MentionsBar } from "./MentionsBar";
 import type { Entity, EntityKind, NoteInfo } from "../types";
 
 export const RESEARCH_KIND_LABELS: Record<PaneResearchKind, { singular: string; plural: string }> = {
@@ -93,15 +94,20 @@ export function ResearchPane({ paneId }: { paneId: PaneId }) {
           key={selectedEntity.id}
           kind={kind as EntityKind}
           entity={selectedEntity}
+          paneId={paneId}
           onDeleted={() => setPaneResearchId(paneId, null)}
         />
       ) : selectedNote ? (
-        <DocEditor
-          key={selectedNote.id}
-          docKey={`note:${selectedNote.id}`}
-          read={() => api.readNote(selectedNote.id)}
-          write={(content, force) => api.writeNote(selectedNote.id, content, force)}
-        />
+        <div className="entity-doc">
+          <DocEditor
+            key={selectedNote.id}
+            docKey={`note:${selectedNote.id}`}
+            paneId={paneId}
+            read={() => api.readNote(selectedNote.id)}
+            write={(content, force) => api.writeNote(selectedNote.id, content, force)}
+          />
+          <MentionsBar tagKind="note" id={selectedNote.id} paneId={paneId} />
+        </div>
       ) : (
         <div className="research-detail empty">
           <p className="muted">

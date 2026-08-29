@@ -780,6 +780,232 @@ button.on {
   outline: 2px solid var(--accent);
 }
 
+/* --- Planungs-Tags (Personen, Orte, Notizen im Fließtext) --- */
+
+.plan-tag[data-plan-tag="person"] {
+  --tag-hue: 212 68% 52%;
+}
+
+.plan-tag[data-plan-tag="location"] {
+  --tag-hue: 150 52% 40%;
+}
+
+.plan-tag[data-plan-tag="note"] {
+  --tag-hue: 36 78% 47%;
+}
+
+.plan-tag {
+  background: hsl(var(--tag-hue) / 0.16);
+  box-shadow: inset 0 -1px 0 hsl(var(--tag-hue) / 0.55);
+  border-radius: 3px;
+  padding: 0 0.12em;
+}
+
+.plan-tag:hover {
+  background: hsl(var(--tag-hue) / 0.3);
+}
+
+/* Frisch eröffneter, noch leerer Tag. */
+.plan-tag-empty {
+  display: inline-block;
+  width: 1.4em;
+  height: 0.9em;
+  vertical-align: baseline;
+  background: hsl(var(--tag-hue) / 0.2);
+  border: 1px dashed hsl(var(--tag-hue) / 0.75);
+  box-shadow: none;
+}
+
+/* Label wird gerade getippt. */
+.plan-tag-composing {
+  border-bottom: 1px dashed currentColor;
+}
+
+.plan-tag-popup,
+.plan-tag-tooltip {
+  position: fixed;
+  z-index: 50;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  /* Bewusst nicht die Editor-Schrift: das hier ist Werkzeug, kein Text. */
+  font-family: system-ui, sans-serif;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.plan-tag-popup {
+  padding: 0.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.plan-tag-popup-head {
+  padding: 0 0.2rem;
+}
+
+.plan-tag-popup input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: inherit;
+  font: inherit;
+}
+
+.plan-tag-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
+.plan-tag-results button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  padding: 0.25rem 0.4rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.plan-tag-results button.on {
+  background: var(--accent);
+  color: var(--accent-text, #fff);
+}
+
+.plan-tag-empty-hint {
+  padding: 0.25rem 0.4rem;
+}
+
+.plan-tag-tooltip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  max-width: 17rem;
+}
+
+.plan-tag-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.plan-tag-tooltip-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.plan-tag-tooltip-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-tag-tooltip-actions {
+  display: flex;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.plan-tag-tooltip-actions button {
+  padding: 0.15rem 0.45rem;
+  font-size: 0.8rem;
+}
+
+/* --- Erwähnungen (Rückverlinkung in Planungsdokumenten) --- */
+
+.mentions {
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+  flex-shrink: 0;
+}
+
+.mentions-head {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.5rem;
+}
+
+.mentions-toggle {
+  flex: 1;
+  text-align: left;
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: 0.8rem;
+  padding: 0.2rem;
+}
+
+.mentions-caret {
+  display: inline-block;
+  width: 0.8rem;
+  opacity: 0.7;
+}
+
+.mentions-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0.5rem 0.5rem;
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
+.mentions-list > li > button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  padding: 0.3rem;
+  border-radius: 4px;
+}
+
+.mentions-list > li > button:hover {
+  background: var(--bg);
+}
+
+.mentions-source {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+}
+
+.mentions-label {
+  background: var(--accent);
+  color: var(--accent-text, #fff);
+  border-radius: 3px;
+  padding: 0 0.3rem;
+  font-size: 0.75rem;
+}
+
+.mentions-context {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* --- Recherche-Dokumente (Personen/Orte/Notizen als freie Dokumente) --- */
 
 .entity-doc {

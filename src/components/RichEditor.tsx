@@ -5,6 +5,9 @@ import { Markdown } from "tiptap-markdown";
 import { useStore, type PaneId } from "../store";
 import { computeStats, formatNorm } from "../stats";
 import { DocImage, imagePasteHandler } from "./DocImage";
+import { PlanTag } from "./PlanTag";
+import { PlanTagCommand } from "./planTagCommand";
+import { PlanTagOverlay } from "./PlanTagOverlay";
 import {
   AlignedHeading,
   AlignedParagraph,
@@ -22,6 +25,9 @@ export function docExtensions() {
     Markdown.configure({ html: true }),
     MarkdownTextAlign.configure({ types: ["heading", "paragraph"] }),
     DocImage,
+    // Planungs-Tags (/person, /location, /note) samt Slash-Kommando.
+    PlanTag,
+    PlanTagCommand,
   ];
 }
 
@@ -99,6 +105,7 @@ function EditorInstance({
         editor={editor}
         className={`editor-content ${typewriter ? "typewriter" : ""}`}
       />
+      <PlanTagOverlay editor={editor} paneId={paneId} />
       <StatusBar editor={editor} paneId={paneId} />
     </>
   );

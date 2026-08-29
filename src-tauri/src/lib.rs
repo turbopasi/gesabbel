@@ -42,6 +42,7 @@ pub fn run() {
             research::delete_note,
             research::read_note,
             research::write_note,
+            research::list_mentions,
             research::load_timeline,
             research::save_timeline,
             search::search_project,

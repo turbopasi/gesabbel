@@ -4,6 +4,7 @@ import type {
   EntityKind,
   ExportFormat,
   ExportTemplate,
+  Mention,
   NodeKind,
   NoteInfo,
   ProjectInfo,
@@ -86,6 +87,11 @@ export const api = {
     invoke<TimelineEvent[]>("save_timeline", { events }),
 
   searchProject: (query: string) => invoke<SearchHit[]>("search_project", { query }),
+
+  /** Alle Stellen, an denen ein Planungs-Tag auf diesen Eintrag zeigt.
+   *  tagKind ist die Tag-Art ("person" | "location" | "note"). */
+  listMentions: (tagKind: string, id: string) =>
+    invoke<Mention[]>("list_mentions", { tagKind, id }),
 
   /** Sicherungspunkt über das ganze Projekt; true = es gab etwas zu sichern. */
   snapshot: (message: string | null = null) => invoke<boolean>("snapshot", { message }),

@@ -4,18 +4,21 @@
 import { useEffect, useState } from "react";
 import { ask, open } from "@tauri-apps/plugin-dialog";
 import { api } from "../api";
-import { useStore } from "../store";
+import { useStore, type PaneId } from "../store";
 import { DocEditor } from "./DocEditor";
+import { MentionsBar } from "./MentionsBar";
 import { SceneLinks } from "./SceneLinks";
 import type { Entity, EntityKind } from "../types";
 
 export function EntityDoc({
   kind,
   entity,
+  paneId,
   onDeleted,
 }: {
   kind: EntityKind;
   entity: Entity;
+  paneId: PaneId;
   onDeleted: () => void;
 }) {
   const touchResearch = useStore((s) => s.touchResearch);
@@ -121,8 +124,14 @@ export function EntityDoc({
       </div>
       <DocEditor
         docKey={`${kind}:${entity.id}`}
+        paneId={paneId}
         read={() => api.readEntityDoc(kind, entity.id)}
         write={(content, force) => api.writeEntityDoc(kind, entity.id, content, force)}
+      />
+      <MentionsBar
+        tagKind={kind === "characters" ? "person" : "location"}
+        id={entity.id}
+        paneId={paneId}
       />
     </div>
   );
