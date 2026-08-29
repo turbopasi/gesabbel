@@ -30,7 +30,11 @@ export function StartScreen() {
 
   return (
     <main className="start-screen">
-      <h1>Gesabbel</h1>
+      {/* Wortmarke als CSS-Maske: die Fläche erbt currentColor und läuft
+          dadurch in allen Themes mit, statt zwei Farbvarianten zu pflegen. */}
+      <h1 className="wordmark">
+        <span className="wordmark-mark" role="img" aria-label="Gesabbel" />
+      </h1>
       <p className="muted">Desktop-Schreibsoftware für Autoren</p>
 
       {creating ? (

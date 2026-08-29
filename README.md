@@ -1,4 +1,7 @@
-# Gesabbel
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="public/brand/gesabbel-wordmark-on-dark.svg">
+  <img src="public/brand/gesabbel-wordmark.svg" alt="Gesabbel" width="320">
+</picture>
 
 Desktop-Schreibsoftware für Autoren, gebaut mit Tauri 2.x (React + TypeScript + Vite).
 Kombiniert die besten Features von Scrivener (Binder, Corkboard, flexibler Export) und

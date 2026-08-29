@@ -266,6 +266,20 @@ button.icon-button.on {
   margin: 0;
 }
 
+.start-screen h1.wordmark {
+  /* Der Text steckt im aria-label der Maske; die Box selbst ist nur Träger. */
+  line-height: 0;
+}
+
+.wordmark-mark {
+  display: block;
+  width: min(20rem, 70vw);
+  aspect-ratio: 883 / 161;
+  background: currentColor;
+  -webkit-mask: url("/brand/gesabbel-wordmark.svg") no-repeat center / contain;
+  mask: url("/brand/gesabbel-wordmark.svg") no-repeat center / contain;
+}
+
 .start-screen > p {
   margin: 0;
   color: var(--text-muted);
