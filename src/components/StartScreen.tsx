@@ -30,7 +30,7 @@ export function StartScreen() {
 
   return (
     <main className="start-screen">
-      <h1>Schreibsoftware</h1>
+      <h1>Gesabbel</h1>
       <p className="muted">Desktop-Schreibsoftware für Autoren</p>
 
       {creating ? (

@@ -45,7 +45,7 @@ fn open_or_init(root: &Path) -> Result<Repository, String> {
 fn signature(author: &str) -> Result<Signature<'static>, String> {
     let name = author.trim();
     let name = if name.is_empty() { "Autor" } else { name };
-    Signature::now(name, "autor@schreibsoftware.local")
+    Signature::now(name, "autor@gesabbel.local")
         .map_err(|e| format!("Git-Signatur: {}", e.message()))
 }
 

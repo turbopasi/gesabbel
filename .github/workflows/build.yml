@@ -43,6 +43,16 @@ jobs:
       - name: Build Tauri app
         run: npm run tauri build
 
+      # Läuft erst nach dem Build, weil der Generator die Lizenztexte aus der
+      # entpackten Cargo-Registry liest. Schlägt fehl, sobald eine Abhängigkeit
+      # dazugekommen ist, ohne dass THIRD-PARTY-NOTICES.md erneuert wurde.
+      - name: Check third-party notices are up to date
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          npm run notices
+          git diff --exit-code -- THIRD-PARTY-NOTICES.md \
+            || { echo "::error::THIRD-PARTY-NOTICES.md ist veraltet — 'npm run notices' ausführen und committen."; exit 1; }
+
       - name: Upload artifacts (Windows)
         if: matrix.platform == 'windows-latest'
         uses: actions/upload-artifact@v4

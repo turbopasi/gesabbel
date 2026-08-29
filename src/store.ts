@@ -61,8 +61,8 @@ export interface Pane {
 }
 
 const AUTOSAVE_MS = 2000;
-const RECENTS_KEY = "schreibsoftware.recents";
-const TYPEWRITER_KEY = "schreibsoftware.typewriter";
+const RECENTS_KEY = "gesabbel.recents";
+const TYPEWRITER_KEY = "gesabbel.typewriter";
 
 const emptyPane = (): Pane => ({
   sceneId: null,

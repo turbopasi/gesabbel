@@ -49,41 +49,68 @@ Download-Button auf `releases/latest`.
 
 ## 4. Lizenz & Repo-Hygiene
 
-Überwiegend organisatorisch — bis auf die Weitergabe-Hinweise, die mit
-ausgeliefert werden müssen:
+**Erledigt.** Die Lizenzwahl fiel auf **Apache-2.0** (permissiv wie MIT, dazu
+eine ausdrückliche Patentlizenz und eine Marken-Klausel), Copyright-Inhaber ist
+Pascal Lamers. Umgesetzt:
 
-- LICENSE-Datei wählen und ablegen (MIT als unkomplizierter Standard empfohlen).
-  Anschließend `license`-Feld in `package.json` und `src-tauri/Cargo.toml` setzen.
-- `THIRD-PARTY-NOTICES.md` anlegen. Die App bündelt fremde Bestandteile, deren
-  Lizenzen einen Hinweis im Auslieferungsumfang verlangen — der reine Link
-  darauf genügt nicht:
-  - **Schriften** in `public/fonts/` (Literata, IBM Plex Sans, IBM Plex Mono):
-    SIL OFL 1.1. Lizenztext und die drei Copyright-Zeilen müssen mitgeliefert
-    werden, siehe `public/fonts/README.md`.
-  - **Symbole** in `src/components/Icon.tsx` (Lucide): ISC. 13 der 32 Glyphen
-    stammen aus Feather und tragen zusätzlich MIT © Cole Bemis.
-  - **libgit2 1.9.7**, über `libgit2-sys` einkompiliert: GPL-2.0 mit
-    Linking-Ausnahme, die das Einbinden in Programme beliebiger Lizenz
-    ausdrücklich erlaubt. Nennung genügt.
-  - **MPL-2.0-Crates** (`epub-builder`, `cssparser`, `selectors`, `dtoa-short`,
-    `option-ext`): dateibezogenes Copyleft, greift nur bei Änderungen an diesen
-    Crates selbst. Nennung genügt.
-  - Alle übrigen Abhängigkeiten (JS wie Rust) sind MIT/Apache-2.0; SQLite ist
-    gemeinfrei. Keine davon schränkt die Lizenzwahl für den eigenen Code ein.
-- README ggf. um Download-/Update-Hinweise ergänzen.
+- `LICENSE` (Apache-2.0-Volltext) und `NOTICE` im Wurzelverzeichnis;
+  `license`-Feld in `package.json`, `src-tauri/Cargo.toml` und
+  `tauri.conf.json` gesetzt.
+- `THIRD-PARTY-NOTICES.md` wird **generiert** statt gepflegt:
+  `npm run notices` (`scripts/generate-third-party-notices.mts`). Es liest den
+  echten Abhängigkeitsbaum — Rust-Laufzeit-Crates für Windows und Linux, npm nur
+  `--omit=dev` — und druckt jeden Lizenztext im Wortlaut ab. Aktuell 494
+  Bestandteile. Der Build-Workflow bricht ab, wenn die Datei veraltet ist.
+- Die Sonderfälle stehen als handgeschriebene Präambel im Generator: Schriften
+  (OFL 1.1, Volltexte jetzt als `public/fonts/OFL-*.txt` gebündelt), Lucide-
+  Symbole (ISC, 13 der 32 Glyphen zusätzlich MIT © Cole Bemis, Volltext als
+  `src/components/Icon.LICENSE.txt`), libgit2 (GPL-2.0 mit Linking-Ausnahme),
+  SQLite (gemeinfrei) und die MPL-2.0-Crates samt Quellcode-Bezugsquelle.
+- Der Installer legt `LICENSE`, `NOTICE` und `THIRD-PARTY-NOTICES.md` neben die
+  Anwendung (`bundle.resources` in `tauri.conf.json`); NSIS und WiX zeigen den
+  Lizenztext zusätzlich im Installationsdialog (`bundle.licenseFile`).
+
+Zwei Korrekturen an der ursprünglichen Einschätzung:
+
+- „Alle übrigen Abhängigkeiten sind MIT/Apache-2.0" stimmte nicht ganz — im Baum
+  stecken außerdem BSD-2/3-Clause, ISC, Zlib, Unicode-3.0, CC0, Unlicense und
+  Python-2.0 (via `argparse`). Alle permissiv und Apache-2.0-verträglich, aber
+  hinweispflichtig. Und auch MIT und BSD verlangen den Hinweis bei *binärer*
+  Weitergabe — „Nennung genügt" gilt also für den gesamten Baum, nicht nur für
+  die Sonderfälle. Genau deshalb der Generator.
+- Die MPL-2.0 verlangt bei binärer Weitergabe zusätzlich die Angabe, **woher der
+  Quellcode zu beziehen ist**. Steht jetzt in der Präambel.
+
+Erledigt inzwischen auch:
+
+- **App-Icon ersetzt.** Das Standard-Logo aus `create-tauri-app` (Marke der Tauri
+  Programme within Commons Conservancy) ist raus, an seiner Stelle steht das
+  eigene „g"-Icon. Die Vorlage liegt als `src-tauri/icons/source-1024.png`;
+  neu erzeugen lässt sich der Satz mit
+  `npm run tauri icon src-tauri/icons/source-1024.png`. Die dabei ebenfalls
+  erzeugten iOS-/Android-Sätze sind gelöscht — Mobil ist kein Ziel.
+- **Name festgelegt: Gesabbel.** „Schreibsoftware" war Platzhalter und steht nur
+  noch dort, wo es als Gattungsbegriff gemeint ist. Umbenannt wurden
+  Produktname, Fenstertitel, npm- und Cargo-Paket (`gesabbel`, `gesabbel_lib`),
+  die Bundle-Identifier (`com.ois-media.gesabbel`) sowie die
+  `localStorage`-Schlüssel (`gesabbel.*`).
+
+Offen:
+
+- README um Download-/Update-Hinweise ergänzen (nach Punkt 1 und 2).
 - SmartScreen-Warnung des unsignierten Windows-Installers wird bewusst akzeptiert
   (kein EV-Zertifikat, üblich bei kostenlosen Open-Source-Tools).
 
 ## Voraussetzungen vor dem Start
 
-- [ ] GitHub-Remote fürs Repo (anlegen oder verknüpfen, spätestens zum Release public)
-- [ ] Lizenz-Entscheidung (MIT oder Apache-2.0; Apache-2.0 gäbe zusätzlich eine
-      ausdrückliche Patentlizenz)
+- [x] GitHub-Remote — <https://github.com/turbopasi/gesabbel>
+- [x] Lizenz-Entscheidung — Apache-2.0, Copyright Pascal Lamers
+- [x] Eigenes App-Icon
 - [ ] Update-Schlüsselpaar erzeugt und privater Schlüssel gesichert
 
 ## Sinnvolle Reihenfolge
 
-1. Repo auf GitHub + Lizenz (Punkt 4, Voraussetzungen)
+1. Repo auf GitHub (Punkt 4 im Übrigen erledigt)
 2. Updater einbauen (Punkt 2) — vor dem ersten Release, damit v0.1.0-Nutzer
    bereits Updates empfangen können
 3. Release-Workflow + erster Tag `v0.1.0` (Punkt 1)
