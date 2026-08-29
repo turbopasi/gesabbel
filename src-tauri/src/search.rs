@@ -88,6 +88,12 @@ fn rebuild_index(
                 body.push_str(": ");
                 body.push_str(&f.value);
             }
+            // Freitext-Dokument (neben dem JSON) — bei migrierten Einträgen
+            // die eigentliche Quelle.
+            if let Ok(doc) = fs::read_to_string(path.with_extension("md")) {
+                body.push('\n');
+                body.push_str(&doc);
+            }
             insert
                 .execute((kind, &entity.id, &entity.name, &body))
                 .map_err(err)?;

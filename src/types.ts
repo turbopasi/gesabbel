@@ -10,6 +10,8 @@ export interface BinderNode {
   status?: NodeStatus;
   color?: string | null;
   tags?: string[];
+  /** Kartenbild fürs Corkboard: projektrelativer Pfad unter images/. */
+  image?: string | null;
   children: BinderNode[];
 }
 

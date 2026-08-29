@@ -1,0 +1,129 @@
+// Person/Ort als freies Dokument: schmaler Meta-Kopf (Name, Bild,
+// Szenen-Verknüpfungen) + TipTap-Editor für den Freitext darunter.
+
+import { useEffect, useState } from "react";
+import { ask, open } from "@tauri-apps/plugin-dialog";
+import { api } from "../api";
+import { useStore } from "../store";
+import { DocEditor } from "./DocEditor";
+import { SceneLinks } from "./SceneLinks";
+import type { Entity, EntityKind } from "../types";
+
+export function EntityDoc({
+  kind,
+  entity,
+  onDeleted,
+}: {
+  kind: EntityKind;
+  entity: Entity;
+  onDeleted: () => void;
+}) {
+  const touchResearch = useStore((s) => s.touchResearch);
+  const [name, setName] = useState(entity.name);
+  const [sceneIds, setSceneIds] = useState<string[]>(entity.sceneIds ?? []);
+  const [image, setImage] = useState<string | null>(null);
+  const [metaOpen, setMetaOpen] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    void api.getEntityImage(kind, entity.id).then((img) => {
+      if (alive) setImage(img);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [kind, entity.id]);
+
+  async function saveName() {
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === entity.name) return;
+    try {
+      await api.updateEntityMeta(kind, entity.id, { name: trimmed });
+      touchResearch();
+    } catch (e) {
+      useStore.setState({ error: String(e) });
+    }
+  }
+
+  async function saveSceneIds(next: string[]) {
+    setSceneIds(next);
+    try {
+      await api.updateEntityMeta(kind, entity.id, { sceneIds: next });
+      touchResearch();
+    } catch (e) {
+      useStore.setState({ error: String(e) });
+    }
+  }
+
+  async function chooseImage() {
+    const file = await open({
+      title: "Bild wählen",
+      filters: [{ name: "Bilder", extensions: ["png", "jpg", "jpeg", "gif", "webp"] }],
+    });
+    if (typeof file !== "string") return;
+    try {
+      await api.setEntityImage(kind, entity.id, file);
+      setImage(await api.getEntityImage(kind, entity.id));
+      touchResearch();
+    } catch (e) {
+      useStore.setState({ error: String(e) });
+    }
+  }
+
+  async function confirmDelete() {
+    const yes = await ask(`"${entity.name}" löschen? (wandert in den Papierkorb des Projekts)`, {
+      title: "Löschen",
+      kind: "warning",
+    });
+    if (!yes) return;
+    try {
+      await api.deleteEntity(kind, entity.id);
+      touchResearch();
+      onDeleted();
+    } catch (e) {
+      useStore.setState({ error: String(e) });
+    }
+  }
+
+  return (
+    <div className="entity-doc">
+      <div className="entity-meta">
+        <div className="detail-header">
+          {image && <img className="entity-avatar" src={image} alt={name} />}
+          <input
+            className="detail-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={() => void saveName()}
+          />
+          <button
+            className={metaOpen ? "on" : ""}
+            title="Bild und Szenen-Verknüpfungen"
+            onClick={() => setMetaOpen(!metaOpen)}
+          >
+            ⓘ
+          </button>
+          <button title="Löschen" onClick={() => void confirmDelete()}>
+            🗑
+          </button>
+        </div>
+        {metaOpen && (
+          <div className="entity-meta-details">
+            <div className="detail-image-row">
+              {image && <img className="detail-image" src={image} alt={name} />}
+              <button onClick={() => void chooseImage()}>
+                {image ? "Bild ersetzen …" : "Bild wählen …"}
+              </button>
+            </div>
+            <SceneLinks sceneIds={sceneIds} onChange={(ids) => void saveSceneIds(ids)} />
+          </div>
+        )}
+      </div>
+      <DocEditor
+        docKey={`${kind}:${entity.id}`}
+        read={() => api.readEntityDoc(kind, entity.id)}
+        write={(content, force) => api.writeEntityDoc(kind, entity.id, content, force)}
+      />
+    </div>
+  );
+}

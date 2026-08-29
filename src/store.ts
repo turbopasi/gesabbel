@@ -11,13 +11,35 @@ import { findNode } from "./tree";
 import type { NodeKind, ProjectInfo } from "./types";
 
 export type SaveState = "saved" | "dirty" | "saving" | "conflict";
-export type PaneId = "left" | "right";
-export type ResearchTab = "characters" | "locations" | "notes" | "timeline";
+export type PaneId = "leftTop" | "leftBottom" | "rightTop" | "rightBottom";
+/** Recherche-Inhalte, die in einem Pane angezeigt werden können. */
+export type PaneResearchKind = "characters" | "locations" | "notes";
+
+export const PANE_IDS: PaneId[] = ["leftTop", "leftBottom", "rightTop", "rightBottom"];
+
+export type LayoutMode = "single" | "cols" | "leftSplit" | "rightSplit" | "grid";
+
+export const LAYOUT_MODES: LayoutMode[] = ["single", "cols", "leftSplit", "rightSplit", "grid"];
+
+export const PANES_FOR_MODE: Record<LayoutMode, PaneId[]> = {
+  single: ["leftTop"],
+  cols: ["leftTop", "rightTop"],
+  leftSplit: ["leftTop", "leftBottom", "rightTop"],
+  rightSplit: ["leftTop", "rightTop", "rightBottom"],
+  grid: PANE_IDS,
+};
 
 export interface Pane {
   sceneId: string | null;
   /** Kapitel-ID, wenn dieser Pane das Corkboard eines Kapitels zeigt (statt Editor). */
   corkboardId: string | null;
+  /** Recherche-Inhalt (Person/Ort/Notiz) statt Editor. */
+  researchKind: PaneResearchKind | null;
+  /** Ausgewähltes Recherche-Item dieses Panes. */
+  researchId: string | null;
+  /** Zeigt den Zeitstrahl über dem sonstigen Inhalt dieses Panes.
+   *  Bewusst kein Ersatz für sceneId/corkboardId: Ausschalten kehrt zurück. */
+  timeline: boolean;
   /** Markdown — aktuellster Stand aus dem Editor. */
   content: string;
   saveState: SaveState;
@@ -32,14 +54,22 @@ const TYPEWRITER_KEY = "schreibsoftware.typewriter";
 const emptyPane = (): Pane => ({
   sceneId: null,
   corkboardId: null,
+  researchKind: null,
+  researchId: null,
+  timeline: false,
   content: "",
   saveState: "saved",
   loadCounter: 0,
 });
 
+const emptyPanes = (): Record<PaneId, Pane> =>
+  Object.fromEntries(PANE_IDS.map((id) => [id, emptyPane()])) as Record<PaneId, Pane>;
+
 const autosaveTimers: Record<PaneId, ReturnType<typeof setTimeout> | null> = {
-  left: null,
-  right: null,
+  leftTop: null,
+  leftBottom: null,
+  rightTop: null,
+  rightBottom: null,
 };
 
 let settingsPersistTimer: ReturnType<typeof setTimeout> | null = null;
@@ -60,7 +90,7 @@ function pushRecent(path: string) {
 interface Store {
   project: ProjectInfo | null;
   panes: Record<PaneId, Pane>;
-  splitOpen: boolean;
+  layoutMode: LayoutMode;
   activePane: PaneId;
   focusMode: boolean;
   typewriter: boolean;
@@ -77,26 +107,34 @@ interface Store {
   selectChapter: (id: string) => Promise<void>;
   updateNodeMeta: (
     id: string,
-    patch: { synopsis?: string; status?: string; color?: string; tags?: string[] },
+    patch: {
+      synopsis?: string;
+      status?: string;
+      color?: string;
+      tags?: string[];
+      /** Kartenbild (rel. Pfad unter images/); "" entfernt es. */
+      image?: string;
+    },
   ) => Promise<void>;
   quickNavOpen: boolean;
   setQuickNavOpen: (open: boolean) => void;
-  /** Hauptansicht: Schreiben (Panes) oder Recherche (Personen/Orte/Notizen/Zeitstrahl). */
-  view: "write" | "research";
-  setView: (view: "write" | "research") => void;
-  researchTab: ResearchTab;
-  setResearchTab: (tab: ResearchTab) => void;
-  /** Ausgewählter Eintrag pro Recherche-Tab (Notizen, Personen, Orte). */
-  researchSelected: Record<string, string | null>;
-  setResearchSelected: (tab: ResearchTab, id: string | null) => void;
-  /** Öffnet einen Recherche-Eintrag (z. B. aus der Suche heraus). */
-  openResearchItem: (tab: ResearchTab, id: string) => void;
+  /** Blendet den Zeitstrahl in einem Pane ein/aus (Inhalt darunter bleibt erhalten). */
+  setPaneTimeline: (paneId: PaneId, on: boolean) => Promise<void>;
   setContent: (paneId: PaneId, content: string) => void;
   flushPane: (paneId: PaneId) => Promise<void>;
   flushAll: () => Promise<void>;
   resolveConflict: (paneId: PaneId, action: "overwrite" | "reload") => Promise<void>;
   setActivePane: (paneId: PaneId) => void;
-  toggleSplit: () => Promise<void>;
+  /** Wechselt das Split-Layout; schließende Panes werden vorher gespeichert. */
+  setLayoutMode: (mode: LayoutMode) => Promise<void>;
+  /** Schaltet der Reihe nach durch die Layout-Modi (Shortcut). */
+  cycleLayout: () => Promise<void>;
+  /** Öffnet Person/Ort/Notiz in einem Pane (id = null → leere Auswahl). */
+  openResearchInPane: (paneId: PaneId, kind: PaneResearchKind, id: string | null) => Promise<void>;
+  setPaneResearchId: (paneId: PaneId, id: string | null) => void;
+  /** Zähler als Refresh-Signal nach Anlegen/Speichern/Löschen von Recherche-Daten. */
+  researchVersion: number;
+  touchResearch: () => void;
   toggleFocusMode: () => void;
   setFocusMode: (on: boolean) => void;
   toggleTypewriter: () => void;
@@ -146,17 +184,17 @@ export const useStore = create<Store>((set, get) => {
   const resetView = (project: ProjectInfo | null) =>
     set({
       project,
-      panes: { left: emptyPane(), right: emptyPane() },
-      splitOpen: false,
-      activePane: "left" as PaneId,
+      panes: emptyPanes(),
+      layoutMode: "single",
+      activePane: "leftTop" as PaneId,
       externalChanges: [],
     });
 
   return {
     project: null,
-    panes: { left: emptyPane(), right: emptyPane() },
-    splitOpen: false,
-    activePane: "left",
+    panes: emptyPanes(),
+    layoutMode: "single",
+    activePane: "leftTop",
     focusMode: false,
     typewriter: localStorage.getItem(TYPEWRITER_KEY) === "1",
     normVariant: loadNormVariant(),
@@ -193,16 +231,22 @@ export const useStore = create<Store>((set, get) => {
     },
 
     selectScene: async (id) => {
-      set({ view: "write" });
       const paneId = get().activePane;
       const pane = get().panes[paneId];
-      if (pane.sceneId === id && !pane.corkboardId) return;
+      if (pane.sceneId === id && !pane.corkboardId && !pane.researchKind) {
+        // Gleiche Szene: nur einen darüberliegenden Zeitstrahl wegblenden.
+        if (pane.timeline) patchPane(paneId, { timeline: false });
+        return;
+      }
       await get().flushPane(paneId);
       try {
         const content = await api.readScene(id);
         patchPane(paneId, {
           sceneId: id,
           corkboardId: null,
+          researchKind: null,
+          researchId: null,
+          timeline: false,
           content,
           saveState: "saved",
           loadCounter: pane.loadCounter + 1,
@@ -213,13 +257,18 @@ export const useStore = create<Store>((set, get) => {
     },
 
     selectChapter: async (id) => {
-      set({ view: "write" });
       const paneId = get().activePane;
-      if (get().panes[paneId].corkboardId === id) return;
+      if (get().panes[paneId].corkboardId === id) {
+        if (get().panes[paneId].timeline) patchPane(paneId, { timeline: false });
+        return;
+      }
       await get().flushPane(paneId);
       patchPane(paneId, {
         sceneId: null,
         corkboardId: id,
+        researchKind: null,
+        researchId: null,
+        timeline: false,
         content: "",
         saveState: "saved",
       });
@@ -236,23 +285,25 @@ export const useStore = create<Store>((set, get) => {
     quickNavOpen: false,
     setQuickNavOpen: (open) => set({ quickNavOpen: open }),
 
-    view: "write",
-    setView: (view) => {
-      // Beim Verlassen der Schreibansicht offene Änderungen sichern.
-      if (view === "research") void get().flushAll();
-      set({ view });
+    setPaneTimeline: async (paneId, on) => {
+      if (get().panes[paneId].timeline === on) {
+        set({ activePane: paneId });
+        return;
+      }
+      // Zweimal geöffnet würden beide Zeitstrahl-Panes unabhängig speichern
+      // und sich gegenseitig überschreiben — stattdessen den offenen aktivieren.
+      if (on) {
+        const open = PANES_FOR_MODE[get().layoutMode].find((p) => get().panes[p].timeline);
+        if (open) {
+          set({ activePane: open });
+          return;
+        }
+      }
+      // Beim Verdecken des Editors offene Änderungen sichern.
+      if (on) await get().flushPane(paneId);
+      patchPane(paneId, { timeline: on });
+      set({ activePane: paneId });
     },
-    researchTab: "characters",
-    setResearchTab: (tab) => set({ researchTab: tab }),
-    researchSelected: {},
-    setResearchSelected: (tab, id) =>
-      set((s) => ({ researchSelected: { ...s.researchSelected, [tab]: id } })),
-    openResearchItem: (tab, id) =>
-      set((s) => ({
-        view: "research",
-        researchTab: tab,
-        researchSelected: { ...s.researchSelected, [tab]: id },
-      })),
 
     setContent: (paneId, content) => {
       patchPane(paneId, { content, saveState: "dirty" });
@@ -282,8 +333,7 @@ export const useStore = create<Store>((set, get) => {
     },
 
     flushAll: async () => {
-      await get().flushPane("left");
-      await get().flushPane("right");
+      for (const paneId of PANE_IDS) await get().flushPane(paneId);
     },
 
     resolveConflict: async (paneId, action) => {
@@ -307,22 +357,64 @@ export const useStore = create<Store>((set, get) => {
     },
 
     setActivePane: (paneId) => {
-      if (paneId === "right" && !get().splitOpen) return;
+      if (!PANES_FOR_MODE[get().layoutMode].includes(paneId)) return;
       set({ activePane: paneId });
     },
 
-    toggleSplit: async () => {
-      if (get().splitOpen) {
-        await get().flushPane("right");
-        set((s) => ({
-          splitOpen: false,
-          activePane: "left",
-          panes: { ...s.panes, right: emptyPane() },
-        }));
-      } else {
-        set({ splitOpen: true, activePane: "right" });
+    setLayoutMode: async (mode) => {
+      const visible = PANES_FOR_MODE[mode];
+      const closing = PANES_FOR_MODE[get().layoutMode].filter((id) => !visible.includes(id));
+      // Ungelöste Konflikte in schließenden Panes würden sonst stumm verworfen.
+      if (closing.some((id) => get().panes[id].saveState === "conflict")) {
+        set({ error: "Bitte zuerst den Schreibkonflikt im betroffenen Bereich lösen." });
+        return;
       }
+      for (const id of closing) await get().flushPane(id);
+      set((s) => ({
+        layoutMode: mode,
+        activePane: visible.includes(s.activePane) ? s.activePane : "leftTop",
+        panes: {
+          ...s.panes,
+          ...Object.fromEntries(closing.map((id) => [id, emptyPane()])),
+        },
+      }));
     },
+
+    cycleLayout: async () => {
+      const i = LAYOUT_MODES.indexOf(get().layoutMode);
+      await get().setLayoutMode(LAYOUT_MODES[(i + 1) % LAYOUT_MODES.length]);
+    },
+
+    openResearchInPane: async (paneId, kind, id) => {
+      // Dieselbe Notiz doppelt zu öffnen provoziert Autosave-Konflikte —
+      // stattdessen den Pane aktivieren, der sie schon zeigt.
+      if (id) {
+        const open = PANES_FOR_MODE[get().layoutMode].find(
+          (p) => get().panes[p].researchKind === kind && get().panes[p].researchId === id,
+        );
+        if (open) {
+          if (get().panes[open].timeline) patchPane(open, { timeline: false });
+          set({ activePane: open });
+          return;
+        }
+      }
+      await get().flushPane(paneId);
+      patchPane(paneId, {
+        sceneId: null,
+        corkboardId: null,
+        researchKind: kind,
+        researchId: id,
+        timeline: false,
+        content: "",
+        saveState: "saved",
+      });
+      set({ activePane: paneId });
+    },
+
+    setPaneResearchId: (paneId, id) => patchPane(paneId, { researchId: id }),
+
+    researchVersion: 0,
+    touchResearch: () => set((s) => ({ researchVersion: s.researchVersion + 1 })),
 
     toggleFocusMode: () => set((s) => ({ focusMode: !s.focusMode })),
     setFocusMode: (on) => set({ focusMode: on }),
@@ -367,7 +459,7 @@ export const useStore = create<Store>((set, get) => {
         const project = await api.deleteNode(id);
         set({ project });
         // Panes leeren, deren Szene/Kapitel es nicht mehr gibt.
-        for (const paneId of ["left", "right"] as PaneId[]) {
+        for (const paneId of PANE_IDS) {
           const pane = get().panes[paneId];
           const ref = pane.sceneId ?? pane.corkboardId;
           if (ref && !findNode(project.meta.binder, ref)) {
@@ -396,7 +488,7 @@ export const useStore = create<Store>((set, get) => {
         const project = await api.openProject(root);
         set({ project, externalChanges: [] });
         // Offene Szenen neu einlesen (außer bei ungelöstem Konflikt).
-        for (const paneId of ["left", "right"] as PaneId[]) {
+        for (const paneId of PANE_IDS) {
           const pane = get().panes[paneId];
           if (pane.corkboardId && !findNode(project.meta.binder, pane.corkboardId)) {
             patchPane(paneId, emptyPane());
@@ -456,7 +548,7 @@ export const useStore = create<Store>((set, get) => {
       await get().flushAll();
       try {
         const content = await api.restoreVersion(commitId, sceneRelPath(sceneId));
-        for (const paneId of ["left", "right"] as PaneId[]) {
+        for (const paneId of PANE_IDS) {
           const pane = get().panes[paneId];
           if (pane.sceneId === sceneId) {
             patchPane(paneId, {

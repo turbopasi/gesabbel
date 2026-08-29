@@ -1,14 +1,35 @@
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Markdown } from "tiptap-markdown";
 import { useStore, type PaneId } from "../store";
 import { computeStats, formatNorm } from "../stats";
+import { DocImage, imagePasteHandler } from "./DocImage";
+import {
+  AlignedHeading,
+  AlignedParagraph,
+  MarkdownTextAlign,
+} from "./TextAlignMarkdown";
+
+/** Gemeinsame Extensions aller Dokument-Editoren (Szenen wie Recherche). */
+export function docExtensions() {
+  return [
+    // Paragraph/Heading kommen als Varianten mit Ausrichtungs-Serialisierung.
+    StarterKit.configure({ paragraph: false, heading: false }),
+    AlignedParagraph,
+    AlignedHeading.configure({ levels: [1, 2, 3] }),
+    // html: true, damit die div-Wrapper der Ausrichtung beim Laden greifen.
+    Markdown.configure({ html: true }),
+    MarkdownTextAlign.configure({ types: ["heading", "paragraph"] }),
+    DocImage,
+  ];
+}
 
 export function RichEditor({ paneId }: { paneId: PaneId }) {
   const pane = useStore((s) => s.panes[paneId]);
-  const isActive = useStore((s) => s.activePane === paneId && s.splitOpen);
+  const isActive = useStore((s) => s.activePane === paneId && s.layoutMode !== "single");
   const setActivePane = useStore((s) => s.setActivePane);
+  const openResearchInPane = useStore((s) => s.openResearchInPane);
 
   return (
     <section
@@ -25,6 +46,18 @@ export function RichEditor({ paneId }: { paneId: PaneId }) {
       ) : (
         <div className="editor empty">
           <p className="muted">Wähle im Binder eine Szene für diesen Bereich aus.</p>
+          <p className="muted small">… oder zeige hier Planungsinhalte an:</p>
+          <div className="empty-research-buttons">
+            <button onClick={() => void openResearchInPane(paneId, "characters", null)}>
+              👤 Personen
+            </button>
+            <button onClick={() => void openResearchInPane(paneId, "locations", null)}>
+              📍 Orte
+            </button>
+            <button onClick={() => void openResearchInPane(paneId, "notes", null)}>
+              🗒 Notizen
+            </button>
+          </div>
         </div>
       )}
     </section>
@@ -42,10 +75,8 @@ function EditorInstance({
   const setContent = useStore((s) => s.setContent);
 
   const editor = useEditor({
-    extensions: [
-      StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
-      Markdown.configure({ html: false }),
-    ],
+    extensions: docExtensions(),
+    editorProps: { handlePaste: imagePasteHandler },
     content: initialContent,
     autofocus: true,
     onUpdate: ({ editor }) => {
@@ -74,7 +105,7 @@ function EditorInstance({
 }
 
 /** tiptap-markdown liefert keine Storage-Typen für sein Editor-Storage-Feld. */
-function getMarkdown(editor: Editor): string {
+export function getMarkdown(editor: Editor): string {
   return (editor.storage as unknown as { markdown: { getMarkdown(): string } }).markdown.getMarkdown();
 }
 
@@ -86,7 +117,26 @@ function centerCaret(editor: Editor) {
   });
 }
 
-function Toolbar({ editor }: { editor: Editor }) {
+/** Balken-Icon für die Ausrichtungs-Buttons. */
+function AlignIcon({ variant }: { variant: "left" | "center" | "right" | "justify" }) {
+  const widths: Record<string, [number, number, number, number]> = {
+    left: [12, 8, 12, 8],
+    center: [12, 8, 12, 8],
+    right: [12, 8, 12, 8],
+    justify: [12, 12, 12, 12],
+  };
+  const x = (w: number) =>
+    variant === "center" ? (12 - w) / 2 : variant === "right" ? 12 - w : 0;
+  return (
+    <svg width="12" height="11" viewBox="0 0 12 11" aria-hidden="true">
+      {widths[variant].map((w, i) => (
+        <rect key={i} x={x(w)} y={i * 3} width={w} height="1.6" rx="0.8" fill="currentColor" />
+      ))}
+    </svg>
+  );
+}
+
+export function Toolbar({ editor }: { editor: Editor }) {
   const state = useEditorState({
     editor,
     selector: ({ editor }) => ({
@@ -95,13 +145,31 @@ function Toolbar({ editor }: { editor: Editor }) {
       h1: editor.isActive("heading", { level: 1 }),
       h2: editor.isActive("heading", { level: 2 }),
       h3: editor.isActive("heading", { level: 3 }),
+      alignLeft: editor.isActive({ textAlign: "left" }),
+      alignCenter: editor.isActive({ textAlign: "center" }),
+      alignRight: editor.isActive({ textAlign: "right" }),
+      alignJustify: editor.isActive({ textAlign: "justify" }),
       canUndo: editor.can().undo(),
       canRedo: editor.can().redo(),
     }),
   });
 
+  // Ohne explizite Absatz-Ausrichtung gilt die Grundeinstellung aus den
+  // Editor-Einstellungen — die Buttons zeigen die tatsächliche Darstellung.
+  const defaultAlignment = useStore((s) => s.settings.editor.defaultAlignment);
+  const explicitAlign = state.alignLeft
+    ? "left"
+    : state.alignCenter
+      ? "center"
+      : state.alignRight
+        ? "right"
+        : state.alignJustify
+          ? "justify"
+          : null;
+  const effectiveAlign = explicitAlign ?? defaultAlignment;
+
   const btn = (
-    label: string,
+    label: ReactNode,
     title: string,
     active: boolean,
     action: () => void,
@@ -129,6 +197,31 @@ function Toolbar({ editor }: { editor: Editor }) {
       {btn("H2", "Überschrift 2", state.h2, () => chain().toggleHeading({ level: 2 }).run())}
       {btn("H3", "Überschrift 3", state.h3, () => chain().toggleHeading({ level: 3 }).run())}
       {btn("¶", "Absatz", false, () => chain().setParagraph().run())}
+      <span className="sep" />
+      {btn(
+        <AlignIcon variant="left" />,
+        "Linksbündig",
+        effectiveAlign === "left",
+        () => chain().toggleTextAlign("left").run(),
+      )}
+      {btn(
+        <AlignIcon variant="center" />,
+        "Zentriert",
+        effectiveAlign === "center",
+        () => chain().toggleTextAlign("center").run(),
+      )}
+      {btn(
+        <AlignIcon variant="right" />,
+        "Rechtsbündig",
+        effectiveAlign === "right",
+        () => chain().toggleTextAlign("right").run(),
+      )}
+      {btn(
+        <AlignIcon variant="justify" />,
+        "Blocksatz",
+        effectiveAlign === "justify",
+        () => chain().toggleTextAlign("justify").run(),
+      )}
       <span className="sep" />
       {btn("↶", "Rückgängig (Strg+Z)", false, () => chain().undo().run(), !state.canUndo)}
       {btn("↷", "Wiederholen (Strg+Y)", false, () => chain().redo().run(), !state.canRedo)}

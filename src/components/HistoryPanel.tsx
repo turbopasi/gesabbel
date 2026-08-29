@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, sceneRelPath } from "../api";
 import { diffLines } from "../diff";
-import { useStore } from "../store";
+import { PANE_IDS, useStore } from "../store";
 import { findNode } from "../tree";
 import type { VersionInfo } from "../types";
 
@@ -18,13 +18,10 @@ function HistoryPanel({ sceneId }: { sceneId: string }) {
   const restoreVersion = useStore((s) => s.restoreVersion);
   const flushAll = useStore((s) => s.flushAll);
   // Aktueller Editorstand, falls die Szene gerade offen ist (Diff-Basis).
-  const paneContent = useStore((s) =>
-    s.panes.left.sceneId === sceneId
-      ? s.panes.left.content
-      : s.panes.right.sceneId === sceneId
-        ? s.panes.right.content
-        : null,
-  );
+  const paneContent = useStore((s) => {
+    const open = PANE_IDS.find((id) => s.panes[id].sceneId === sceneId);
+    return open ? s.panes[open].content : null;
+  });
 
   const [versions, setVersions] = useState<VersionInfo[] | null>(null);
   const [selected, setSelected] = useState<VersionInfo | null>(null);

@@ -26,7 +26,8 @@ export function QuickNav() {
   const binder = useStore((s) => s.project?.meta.binder ?? NO_BINDER);
   const selectScene = useStore((s) => s.selectScene);
   const selectChapter = useStore((s) => s.selectChapter);
-  const openResearchItem = useStore((s) => s.openResearchItem);
+  const openResearchInPane = useStore((s) => s.openResearchInPane);
+  const setPaneTimeline = useStore((s) => s.setPaneTimeline);
 
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
@@ -105,11 +106,12 @@ export function QuickNav() {
       return;
     }
     const { kind, id } = item.hit;
+    const activePane = useStore.getState().activePane;
     if (kind === "scene") void selectScene(id);
-    else if (kind === "note") openResearchItem("notes", id);
-    else if (kind === "character") openResearchItem("characters", id);
-    else if (kind === "location") openResearchItem("locations", id);
-    else if (kind === "event") openResearchItem("timeline", id);
+    else if (kind === "note") void openResearchInPane(activePane, "notes", id);
+    else if (kind === "character") void openResearchInPane(activePane, "characters", id);
+    else if (kind === "location") void openResearchInPane(activePane, "locations", id);
+    else if (kind === "event") void setPaneTimeline(activePane, true);
   }
 
   return (

@@ -52,6 +52,11 @@ fn entity_rel_path(dir: &str, id: &str) -> String {
     format!("{dir}/{id}.json")
 }
 
+/// Freitext-Dokument einer Person / eines Orts (liegt neben der JSON-Metadatei).
+pub(crate) fn entity_doc_rel(dir: &str, id: &str) -> String {
+    format!("{dir}/{id}.md")
+}
+
 #[tauri::command]
 pub fn list_entities(kind: String, state: tauri::State<AppState>) -> Result<Vec<Entity>, String> {
     let dir = entity_dir(&kind)?;
@@ -125,8 +130,128 @@ pub fn delete_entity(
                 .map_err(|e| format!("In Papierkorb verschieben: {e}"))?;
         }
         p.known_mtimes.remove(&rel);
+        let doc_rel = entity_doc_rel(dir, &id);
+        let doc_src = p.abs(&doc_rel);
+        if doc_src.exists() {
+            fs::rename(&doc_src, trash.join(format!("{stamp}-{id}.md")))
+                .map_err(|e| format!("In Papierkorb verschieben: {e}"))?;
+        }
+        p.known_mtimes.remove(&doc_rel);
         p.search_dirty = true;
         Ok(())
+    })
+}
+
+/// Patcht nur die Metadaten eines Eintrags (Name, Szenen-Verknüpfungen) —
+/// liest den aktuellen Stand von Platte, damit das Frontend nie versehentlich
+/// alte Formulardaten (description/fields) zurückschreibt.
+#[tauri::command]
+pub fn update_entity_meta(
+    kind: String,
+    id: String,
+    name: Option<String>,
+    scene_ids: Option<Vec<String>>,
+    state: tauri::State<AppState>,
+) -> Result<Entity, String> {
+    let dir = entity_dir(&kind)?;
+    validate_id_pub(&id)?;
+    with_project(&state, |p| {
+        let rel = entity_rel_path(dir, &id);
+        let raw = fs::read_to_string(p.abs(&rel)).map_err(|e| format!("{rel} lesen: {e}"))?;
+        let mut entity: Entity =
+            serde_json::from_str(&raw).map_err(|e| format!("{rel} ungültig: {e}"))?;
+        if let Some(name) = name {
+            if name.trim().is_empty() {
+                return Err("Name darf nicht leer sein".into());
+            }
+            entity.name = name;
+        }
+        if let Some(scene_ids) = scene_ids {
+            entity.scene_ids = scene_ids;
+        }
+        let json = serde_json::to_string_pretty(&entity)
+            .map_err(|e| format!("Serialisierung: {e}"))?;
+        fs::write(p.abs(&rel), json).map_err(|e| format!("{rel} schreiben: {e}"))?;
+        p.note_mtime(&rel);
+        p.search_dirty = true;
+        Ok(entity)
+    })
+}
+
+/// Liest das Freitext-Dokument einer Person / eines Orts. Alt-Einträge, die
+/// noch Beschreibung + freie Felder im JSON tragen (früheres Formular),
+/// werden beim ersten Zugriff nach Markdown migriert.
+#[tauri::command]
+pub fn read_entity_doc(
+    kind: String,
+    id: String,
+    state: tauri::State<AppState>,
+) -> Result<String, String> {
+    let dir = entity_dir(&kind)?;
+    validate_id_pub(&id)?;
+    with_project(&state, |p| {
+        let rel = entity_doc_rel(dir, &id);
+        let path = p.abs(&rel);
+        if !path.exists() {
+            let json_rel = entity_rel_path(dir, &id);
+            let raw = fs::read_to_string(p.abs(&json_rel))
+                .map_err(|e| format!("{json_rel} lesen: {e}"))?;
+            let mut entity: Entity =
+                serde_json::from_str(&raw).map_err(|e| format!("{json_rel} ungültig: {e}"))?;
+
+            let mut doc = entity.description.trim().to_string();
+            if !entity.fields.is_empty() {
+                if !doc.is_empty() {
+                    doc.push_str("\n\n");
+                }
+                for f in &entity.fields {
+                    doc.push_str(&format!("- **{}:** {}\n", f.label, f.value));
+                }
+            }
+            fs::write(&path, &doc).map_err(|e| format!("{rel} schreiben: {e}"))?;
+
+            // Formulardaten aus dem JSON entfernen — das Dokument ist jetzt die Quelle.
+            entity.description = String::new();
+            entity.fields = Vec::new();
+            let json = serde_json::to_string_pretty(&entity)
+                .map_err(|e| format!("Serialisierung: {e}"))?;
+            fs::write(p.abs(&json_rel), json).map_err(|e| format!("{json_rel} schreiben: {e}"))?;
+
+            p.note_mtime(&json_rel);
+            p.note_mtime(&rel);
+            p.search_dirty = true;
+            return Ok(doc);
+        }
+        let content = fs::read_to_string(&path).map_err(|e| format!("{rel} lesen: {e}"))?;
+        p.note_mtime(&rel);
+        Ok(content)
+    })
+}
+
+#[tauri::command]
+pub fn write_entity_doc(
+    kind: String,
+    id: String,
+    content: String,
+    force: bool,
+    state: tauri::State<AppState>,
+) -> Result<WriteResult, String> {
+    let dir = entity_dir(&kind)?;
+    validate_id_pub(&id)?;
+    with_project(&state, |p| {
+        let rel = entity_doc_rel(dir, &id);
+        let path = p.abs(&rel);
+        if !force {
+            if let (Some(known), Some(current)) = (p.known_mtimes.get(&rel), mtime_ms(&path)) {
+                if current != *known {
+                    return Ok(WriteResult::Conflict);
+                }
+            }
+        }
+        fs::write(&path, &content).map_err(|e| format!("{rel} schreiben: {e}"))?;
+        p.note_mtime(&rel);
+        p.search_dirty = true;
+        Ok(WriteResult::Ok)
     })
 }
 
@@ -331,6 +456,92 @@ pub fn write_note(
         p.note_mtime(&rel);
         p.search_dirty = true;
         Ok(WriteResult::Ok)
+    })
+}
+
+// ---------------------------------------------------------------------------
+// Dokument-Bilder (inline in Szenen und Recherche-Dokumenten)
+// ---------------------------------------------------------------------------
+
+const IMAGE_EXTS: [&str; 5] = ["png", "jpg", "jpeg", "gif", "webp"];
+
+fn image_mime(ext: &str) -> &'static str {
+    match ext {
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        _ => "image/png",
+    }
+}
+
+/// Speichert ein eingefügtes Bild (z. B. Screenshot aus der Zwischenablage)
+/// unter `images/` und liefert den projektrelativen Pfad fürs Markdown.
+#[tauri::command]
+pub fn save_doc_image(
+    data_base64: String,
+    ext: String,
+    state: tauri::State<AppState>,
+) -> Result<String, String> {
+    let ext = ext.to_lowercase();
+    if !IMAGE_EXTS.contains(&ext.as_str()) {
+        return Err(format!("Nicht unterstütztes Bildformat: .{ext}"));
+    }
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(&data_base64)
+        .map_err(|e| format!("Bilddaten ungültig: {e}"))?;
+    with_project(&state, |p| {
+        fs::create_dir_all(p.abs("images")).map_err(|e| format!("images anlegen: {e}"))?;
+        let id = make_id("bild");
+        let rel = format!("images/{id}.{ext}");
+        fs::write(p.abs(&rel), &bytes).map_err(|e| format!("{rel} schreiben: {e}"))?;
+        Ok(rel)
+    })
+}
+
+/// Kopiert eine Bilddatei (Dateidialog) nach `images/` und liefert den
+/// projektrelativen Pfad — Gegenstück zu `save_doc_image` für die Zwischenablage.
+#[tauri::command]
+pub fn import_doc_image(
+    source_path: String,
+    state: tauri::State<AppState>,
+) -> Result<String, String> {
+    let ext = std::path::Path::new(&source_path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_lowercase())
+        .ok_or("Datei hat keine Endung")?;
+    if !IMAGE_EXTS.contains(&ext.as_str()) {
+        return Err(format!("Nicht unterstütztes Bildformat: .{ext}"));
+    }
+    with_project(&state, |p| {
+        fs::create_dir_all(p.abs("images")).map_err(|e| format!("images anlegen: {e}"))?;
+        let id = make_id("bild");
+        let rel = format!("images/{id}.{ext}");
+        fs::copy(&source_path, p.abs(&rel)).map_err(|e| format!("Bild kopieren: {e}"))?;
+        Ok(rel)
+    })
+}
+
+/// Liefert ein Dokument-Bild als data-URL (base64) — vermeidet Asset-Protocol-Scopes.
+#[tauri::command]
+pub fn read_doc_image(
+    rel: String,
+    state: tauri::State<AppState>,
+) -> Result<Option<String>, String> {
+    if !rel.starts_with("images/") || rel.contains("..") || rel.contains('\\') {
+        return Err(format!("Ungültiger Bildpfad: {rel}"));
+    }
+    let ext = rel.rsplit('.').next().unwrap_or("").to_lowercase();
+    if !IMAGE_EXTS.contains(&ext.as_str()) {
+        return Err(format!("Ungültiger Bildpfad: {rel}"));
+    }
+    with_project(&state, |p| {
+        let bytes = match fs::read(p.abs(&rel)) {
+            Ok(b) => b,
+            Err(_) => return Ok(None),
+        };
+        let b64 = base64::engine::general_purpose::STANDARD.encode(bytes);
+        Ok(Some(format!("data:{};base64,{b64}", image_mime(&ext))))
     })
 }
 

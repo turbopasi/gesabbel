@@ -35,6 +35,8 @@ export const api = {
       /** "" löscht die Farbe. */
       color?: string;
       tags?: string[];
+      /** Kartenbild (rel. Pfad unter images/); "" entfernt es. */
+      image?: string;
     },
   ) => invoke<ProjectInfo>("update_node_meta", { id, ...patch }),
   deleteNode: (id: string) => invoke<ProjectInfo>("delete_node", { id }),
@@ -49,6 +51,26 @@ export const api = {
     invoke<Entity>("set_entity_image", { kind, id, sourcePath }),
   getEntityImage: (kind: EntityKind, id: string) =>
     invoke<string | null>("get_entity_image", { kind, id }),
+
+  /** Patcht nur Name und/oder Szenen-Verknüpfungen (liest den Rest von Platte). */
+  updateEntityMeta: (
+    kind: EntityKind,
+    id: string,
+    patch: { name?: string; sceneIds?: string[] },
+  ) => invoke<Entity>("update_entity_meta", { kind, id, ...patch }),
+  readEntityDoc: (kind: EntityKind, id: string) =>
+    invoke<string>("read_entity_doc", { kind, id }),
+  writeEntityDoc: (kind: EntityKind, id: string, content: string, force = false) =>
+    invoke<WriteResult>("write_entity_doc", { kind, id, content, force }),
+
+  /** Speichert ein eingefügtes Bild unter images/; liefert den relativen Pfad. */
+  saveDocImage: (dataBase64: string, ext: string) =>
+    invoke<string>("save_doc_image", { dataBase64, ext }),
+  /** Kopiert eine Bilddatei (Dateidialog) nach images/; liefert den relativen Pfad. */
+  importDocImage: (sourcePath: string) =>
+    invoke<string>("import_doc_image", { sourcePath }),
+  /** Dokument-Bild als data-URL (null, wenn die Datei fehlt). */
+  readDocImage: (rel: string) => invoke<string | null>("read_doc_image", { rel }),
 
   listNotes: () => invoke<NoteInfo[]>("list_notes"),
   createNote: (title: string) => invoke<NoteInfo[]>("create_note", { title }),

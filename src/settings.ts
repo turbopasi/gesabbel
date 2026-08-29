@@ -22,6 +22,10 @@ export interface EditorSettings {
   /** Maximale Textbreite in rem. */
   textWidth: number;
   cursorStyle: "standard" | "accent";
+  /** Grundausrichtung aller Absätze ohne explizite Ausrichtung. */
+  defaultAlignment: "left" | "justify";
+  /** Automatische Silbentrennung (wichtig für sauberen Blocksatz). */
+  hyphenation: boolean;
 }
 
 export interface LayoutSettings {
@@ -29,6 +33,12 @@ export interface LayoutSettings {
   /** Binder-Breite in px (auch per Drag am Trennsteg verstellbar). */
   binderWidth: number;
   binderPosition: "left" | "right";
+  /** Planungsleiste (Personen/Orte/Notizen/Module) — zweite Sidebar neben dem
+   *  Binder. Schlüssel heißen weiter research*, damit gespeicherte
+   *  Einstellungen bestehender Projekte gültig bleiben. */
+  researchVisible: boolean;
+  researchWidth: number;
+  researchPosition: "left" | "right";
 }
 
 export interface AppSettings {
@@ -109,8 +119,9 @@ export interface ShortcutAction {
 export const SHORTCUT_ACTIONS: ShortcutAction[] = [
   { id: "focusMode", label: "Fokusmodus umschalten", default: "Ctrl+Shift+F" },
   { id: "quickNav", label: "Schnellnavigation", default: "Ctrl+K" },
-  { id: "toggleSplit", label: "Split-Ansicht umschalten", default: "Ctrl+Shift+S" },
+  { id: "toggleSplit", label: "Split-Layout wechseln", default: "Ctrl+Shift+S" },
   { id: "toggleBinder", label: "Binder ein-/ausblenden", default: "Ctrl+Shift+B" },
+  { id: "toggleResearchSidebar", label: "Planungsleiste ein-/ausblenden", default: "Ctrl+Shift+R" },
   { id: "snapshot", label: "Sicherungspunkt setzen", default: "Ctrl+S" },
   { id: "export", label: "Export-Dialog öffnen", default: "Ctrl+Shift+E" },
   { id: "settings", label: "Einstellungen öffnen", default: "Ctrl+," },
@@ -163,8 +174,17 @@ export function defaultSettings(): AppSettings {
       lineHeight: 1.7,
       textWidth: 48,
       cursorStyle: "standard",
+      defaultAlignment: "left",
+      hyphenation: true,
     },
-    layout: { binderVisible: true, binderWidth: 250, binderPosition: "left" },
+    layout: {
+      binderVisible: true,
+      binderWidth: 250,
+      binderPosition: "left",
+      researchVisible: false,
+      researchWidth: 250,
+      researchPosition: "right",
+    },
     shortcuts: Object.fromEntries(SHORTCUT_ACTIONS.map((a) => [a.id, a.default])),
   };
 }
@@ -216,5 +236,8 @@ export function applySettings(s: AppSettings) {
     "--caret",
     s.editor.cursorStyle === "accent" ? "var(--accent)" : "currentColor",
   );
+  root.style.setProperty("--editor-align", s.editor.defaultAlignment);
+  root.style.setProperty("--editor-hyphens", s.editor.hyphenation ? "auto" : "manual");
   root.style.setProperty("--binder-width", `${s.layout.binderWidth}px`);
+  root.style.setProperty("--research-width", `${s.layout.researchWidth}px`);
 }

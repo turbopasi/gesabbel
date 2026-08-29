@@ -924,6 +924,7 @@ mod tests {
             status: "draft".into(),
             color: None,
             tags: vec![],
+            image: None,
             children: vec![],
         };
         let meta = ProjectMeta {
@@ -940,6 +941,7 @@ mod tests {
                     status: "draft".into(),
                     color: None,
                     tags: vec![],
+                    image: None,
                     children: vec![
                         scene("szene-aaa111", "Anfang"),
                         scene("szene-bbb222", "Mitte"),
@@ -953,6 +955,7 @@ mod tests {
                     status: "draft".into(),
                     color: None,
                     tags: vec![],
+                    image: None,
                     children: vec![scene("szene-ccc333", "Ende")],
                 },
             ],

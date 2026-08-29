@@ -191,27 +191,184 @@ input {
   white-space: nowrap;
 }
 
+/* Knöpfe nach Funktion gruppiert: was der Bereich zeigt | was rundherum
+   sichtbar ist | Projektaktionen. Trennstriche machen den Unterschied
+   zwischen Ansichtswahl und Ein-/Ausblenden sichtbar. */
+.titlebar-group {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.titlebar-group + .titlebar-group {
+  padding-left: 0.75rem;
+  border-left: 1px solid var(--border);
+}
+
 .panes {
   flex: 1;
   display: flex;
   min-height: 0;
 }
 
-/* --- Binder --- */
+/* --- Pane-Grid (Split-Layouts) --- */
+
+.pane-grid {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+  background: var(--border);
+  grid-template-areas: "leftTop";
+}
+
+.pane-grid[data-mode="cols"] {
+  grid-template-columns: 1fr 1fr;
+  grid-template-areas: "leftTop rightTop";
+}
+
+.pane-grid[data-mode="leftSplit"] {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  grid-template-areas:
+    "leftTop rightTop"
+    "leftBottom rightTop";
+}
+
+.pane-grid[data-mode="rightSplit"] {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  grid-template-areas:
+    "leftTop rightTop"
+    "leftTop rightBottom";
+}
+
+.pane-grid[data-mode="grid"] {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  grid-template-areas:
+    "leftTop rightTop"
+    "leftBottom rightBottom";
+}
+
+.pane-cell {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* --- Sidebars (Binder, Recherche-Leiste) --- */
+
+.sidebar-slot {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.sidebar--left {
+  border-right: 1px solid var(--border);
+}
+
+.sidebar--right {
+  border-left: 1px solid var(--border);
+}
 
 .binder {
   width: var(--binder-width, 250px);
   flex-shrink: 0;
-  border-right: 1px solid var(--border);
   background: var(--panel);
   overflow-y: auto;
   padding: 0.5rem;
 }
 
-/* Binder rechts (letztes Kind der Pane-Zeile): Rahmen auf die andere Seite. */
-.panes > .binder:last-child {
-  border-right: none;
-  border-left: 1px solid var(--border);
+.research-sidebar {
+  width: var(--research-width, 250px);
+  flex-shrink: 0;
+  background: var(--panel);
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.research-group {
+  margin-bottom: 0.5rem;
+}
+
+.research-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.25rem 0.2rem;
+  user-select: none;
+}
+
+.research-group-header .disclosure {
+  width: 1em;
+  text-align: center;
+  font-size: 0.8rem;
+}
+
+.research-group-header button {
+  margin-left: auto;
+  font-size: 0.8rem;
+  padding: 0.1rem 0.45rem;
+}
+
+.research-group-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 0.4rem;
+}
+
+.research-group-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.25rem 0.4rem;
+  border-radius: 4px;
+  cursor: pointer;
+  gap: 0.25rem;
+}
+
+.research-group-list li:hover {
+  background: rgba(128, 128, 128, 0.15);
+}
+
+.research-group-list li.open {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.research-group-list li.empty {
+  cursor: default;
+}
+
+.research-group-list li.empty:hover {
+  background: none;
+}
+
+.research-group-list .item-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.research-group-list li input {
+  flex: 1;
+  min-width: 0;
+}
+
+.research-group-list li .row-delete {
+  visibility: hidden;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.3rem;
+}
+
+.research-group-list li:hover .row-delete {
+  visibility: visible;
 }
 
 .pane-resizer {
@@ -395,9 +552,21 @@ li.scene .binder-row {
   box-shadow: 3px 0 0 0 var(--accent), 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
+.card:focus {
+  outline: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15), 0 0 0 2px var(--accent);
+}
+
 .card-title {
   font-weight: 600;
   cursor: pointer;
+}
+
+.card-image {
+  width: 100%;
+  max-height: 140px;
+  object-fit: cover;
+  border-radius: 4px;
 }
 
 .card-synopsis {
@@ -544,10 +713,6 @@ li.scene .binder-row {
   border-left: 2px solid transparent;
 }
 
-.editor + .editor {
-  border-left: 1px solid var(--border);
-}
-
 .editor.pane-active {
   border-left-color: var(--accent);
 }
@@ -555,6 +720,12 @@ li.scene .binder-row {
 .editor.empty {
   justify-content: center;
   align-items: center;
+}
+
+.editor.empty .empty-research-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
 }
 
 button.on {
@@ -591,6 +762,63 @@ button.on {
   min-height: 0;
 }
 
+/* Inline-Bilder in Dokumenten (Szenen wie Recherche). */
+.editor-content img {
+  max-width: 100%;
+}
+
+.doc-image {
+  display: block;
+}
+
+.doc-image img {
+  max-width: 100%;
+  border-radius: 4px;
+}
+
+.doc-image.ProseMirror-selectednode img {
+  outline: 2px solid var(--accent);
+}
+
+/* --- Recherche-Dokumente (Personen/Orte/Notizen als freie Dokumente) --- */
+
+.entity-doc {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.entity-meta {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: var(--panel);
+}
+
+.entity-avatar {
+  width: 28px;
+  height: 28px;
+  object-fit: cover;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.entity-meta-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.doc-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .editor-content .ProseMirror {
   min-height: 100%;
   outline: none;
@@ -602,6 +830,11 @@ button.on {
   margin: 0 auto;
   box-sizing: content-box;
   caret-color: var(--caret, currentColor);
+  /* Grundausrichtung + Silbentrennung aus den Editor-Einstellungen;
+     explizit ausgerichtete Absätze überschreiben das per Inline-Style.
+     Silbentrennung braucht lang="de" (index.html). */
+  text-align: var(--editor-align, left);
+  hyphens: var(--editor-hyphens, manual);
 }
 
 /* Typewriter-Modus: Platz, damit die Cursorzeile mittig bleiben kann. */
@@ -642,72 +875,27 @@ button.on {
 
 /* --- Recherche --- */
 
-.research {
-  flex: 1;
-  display: flex;
+/* Recherche-Inhalt in einem Pane: Kopfzeile mit Auswahl + Detail darunter. */
+.research-pane {
   flex-direction: column;
-  min-height: 0;
 }
 
-.research-tabs {
+.research-pane-header {
   display: flex;
-  gap: 0.25rem;
+  align-items: center;
+  gap: 0.5rem;
   padding: 0.4rem 0.75rem;
   border-bottom: 1px solid var(--border);
   background: var(--panel);
 }
 
-.research-split {
+.research-pane-header select {
   flex: 1;
-  display: flex;
-  min-height: 0;
+  min-width: 0;
 }
 
-.research-list {
-  width: 230px;
-  flex-shrink: 0;
-  border-right: 1px solid var(--border);
-  background: var(--panel);
-  overflow-y: auto;
-  padding: 0.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.research-list ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.research-list li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.3rem 0.5rem;
-  border-radius: 4px;
-  cursor: pointer;
-  gap: 0.25rem;
-}
-
-.research-list li:hover {
-  background: rgba(128, 128, 128, 0.15);
-}
-
-.research-list li.selected {
-  background: var(--accent);
-  color: var(--accent-text);
-}
-
-.research-list li .row-delete {
-  visibility: hidden;
-  font-size: 0.7rem;
-  padding: 0.1rem 0.3rem;
-}
-
-.research-list li:hover .row-delete {
-  visibility: visible;
+.research-pane .detail-image {
+  max-width: 140px;
 }
 
 .research-detail {
@@ -749,34 +937,6 @@ button.on {
   border-radius: 6px;
   border: 1px solid var(--border);
   object-fit: cover;
-}
-
-.detail-description {
-  font: inherit;
-  min-height: 7rem;
-  resize: vertical;
-  padding: 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: transparent;
-  color: inherit;
-}
-
-.field-row {
-  display: flex;
-  gap: 0.4rem;
-}
-
-.field-row input:first-child {
-  width: 11rem;
-}
-
-.field-row input:nth-child(2) {
-  flex: 1;
-}
-
-.add-field {
-  align-self: flex-start;
 }
 
 .scene-links {
@@ -830,31 +990,12 @@ button.on {
   max-width: 14rem;
 }
 
-/* Notizen */
-
-.note-editor {
-  padding: 0;
-  gap: 0;
-}
-
-.note-content {
-  flex: 1;
-  resize: none;
-  border: none;
-  outline: none;
-  padding: 1.5rem clamp(1rem, 8%, 4rem);
-  font-family: var(--editor-font);
-  font-size: calc(var(--editor-size) * 0.95);
-  line-height: var(--editor-lineheight);
-  background: transparent;
-  color: inherit;
-  caret-color: var(--caret, currentColor);
-}
-
 /* Zeitstrahl */
 
 .timeline {
   flex: 1;
+  /* Läuft als Pane-Inhalt in einer Flex-Spalte — ohne min-height kein Scrollen. */
+  min-height: 0;
   overflow-y: auto;
   padding: 1.25rem;
 }
@@ -1133,10 +1274,48 @@ button.on {
 }
 
 .app.focus-mode .titlebar,
-.app.focus-mode .binder,
+.app.focus-mode .sidebar-slot,
 .app.focus-mode .pane-resizer,
 .app.focus-mode .toolbar {
   display: none;
+}
+
+/* --- Split-Layout-Menü (Titelleiste) --- */
+
+.layout-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.layout-menu > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.layout-menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.layout-menu-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 41;
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.3rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.layout-menu-popover button {
+  display: inline-flex;
+  padding: 0.35rem 0.5rem;
 }
 
 /* --- Banner --- */

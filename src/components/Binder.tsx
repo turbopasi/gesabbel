@@ -1,6 +1,6 @@
 import { useState, type DragEvent } from "react";
 import { ask } from "@tauri-apps/plugin-dialog";
-import { useStore } from "../store";
+import { PANE_IDS, useStore } from "../store";
 import { findParentAndIndex, isDescendant } from "../tree";
 import { STATUS_LABEL, type BinderNode, type NodeStatus } from "../types";
 
@@ -39,12 +39,10 @@ export function Binder() {
 function BinderItem({ node }: { node: BinderNode }) {
   const { selectScene, selectChapter, createNode, renameNode, deleteNode, moveNode } =
     useStore();
-  const isOpen = useStore(
-    (s) =>
-      s.panes.left.sceneId === node.id ||
-      s.panes.right.sceneId === node.id ||
-      s.panes.left.corkboardId === node.id ||
-      s.panes.right.corkboardId === node.id,
+  const isOpen = useStore((s) =>
+    PANE_IDS.some(
+      (p) => s.panes[p].sceneId === node.id || s.panes[p].corkboardId === node.id,
+    ),
   );
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(node.title);

@@ -197,6 +197,25 @@ function EditorTab() {
           <option value="accent">Akzentfarbe</option>
         </select>
       </label>
+      <label className="settings-row">
+        <span>Grundausrichtung</span>
+        <select
+          value={ed.defaultAlignment}
+          onChange={(e) => patch({ defaultAlignment: e.target.value as "left" | "justify" })}
+        >
+          <option value="left">Linksbündig</option>
+          <option value="justify">Blocksatz</option>
+        </select>
+        <span className="muted small">gilt für Absätze ohne eigene Ausrichtung</span>
+      </label>
+      <label className="settings-row">
+        <input
+          type="checkbox"
+          checked={ed.hyphenation}
+          onChange={(e) => patch({ hyphenation: e.target.checked })}
+        />
+        <span>Automatische Silbentrennung (empfohlen bei Blocksatz)</span>
+      </label>
       <p className="muted small">
         Diese Einstellungen wirken auf den Schreib-Editor und die Notizen — nicht auf den
         Export (dort gelten die Formatierungsvorlagen).
@@ -249,6 +268,35 @@ function LayoutTab() {
           max={500}
           value={lay.binderWidth}
           onChange={(e) => patch({ binderWidth: clamp(e.target.valueAsNumber, 160, 500, 250) })}
+        />
+        <span className="muted small">px — auch per Ziehen am Trennsteg verstellbar</span>
+      </label>
+      <label className="settings-row">
+        <input
+          type="checkbox"
+          checked={lay.researchVisible}
+          onChange={(e) => patch({ researchVisible: e.target.checked })}
+        />
+        <span>Planungsleiste (Personen, Orte, Notizen, Module) anzeigen</span>
+      </label>
+      <label className="settings-row">
+        <span>Planungsleiste-Position</span>
+        <select
+          value={lay.researchPosition}
+          onChange={(e) => patch({ researchPosition: e.target.value as "left" | "right" })}
+        >
+          <option value="left">Links</option>
+          <option value="right">Rechts</option>
+        </select>
+      </label>
+      <label className="settings-row">
+        <span>Planungsleiste-Breite</span>
+        <input
+          type="number"
+          min={160}
+          max={500}
+          value={lay.researchWidth}
+          onChange={(e) => patch({ researchWidth: clamp(e.target.valueAsNumber, 160, 500, 250) })}
         />
         <span className="muted small">px — auch per Ziehen am Trennsteg verstellbar</span>
       </label>

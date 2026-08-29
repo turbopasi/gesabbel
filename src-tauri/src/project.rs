@@ -44,6 +44,9 @@ pub struct BinderNode {
     pub color: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
+    /// Kartenbild fürs Corkboard: projektrelativer Pfad unter `images/`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<String>,
     #[serde(default)]
     pub children: Vec<BinderNode>,
 }
@@ -66,6 +69,7 @@ impl BinderNode {
             status: default_status(),
             color: None,
             tags: Vec::new(),
+            image: None,
             children: Vec::new(),
         }
     }
@@ -530,6 +534,7 @@ pub fn update_node_meta(
     status: Option<String>,
     color: Option<String>,
     tags: Option<Vec<String>>,
+    image: Option<String>,
     state: tauri::State<AppState>,
 ) -> Result<ProjectInfo, String> {
     with_project(&state, |p| {
@@ -537,6 +542,12 @@ pub fn update_node_meta(
             .ok_or(format!("Node nicht gefunden: {id}"))?;
         if let Some(s) = synopsis {
             node.synopsis = s;
+        }
+        if let Some(img) = image {
+            if !img.is_empty() && (!img.starts_with("images/") || img.contains("..")) {
+                return Err(format!("Ungültiger Bildpfad: {img}"));
+            }
+            node.image = if img.is_empty() { None } else { Some(img) };
         }
         if let Some(s) = status {
             if !["draft", "revision", "done"].contains(&s.as_str()) {

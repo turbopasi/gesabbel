@@ -1,6 +1,9 @@
-import { useState, type DragEvent } from "react";
+import { useState, type ClipboardEvent, type DragEvent } from "react";
+import { open } from "@tauri-apps/plugin-dialog";
+import { api } from "../api";
 import { useStore } from "../store";
 import { findNode, findParentAndIndex } from "../tree";
+import { saveClipboardImage, useDocImage } from "./DocImage";
 import {
   COLOR_PRESETS,
   STATUS_LABEL,
@@ -93,9 +96,41 @@ function Card({ node, parentId }: { node: BinderNode; parentId: string }) {
     return e.clientX - rect.left < rect.width / 2 ? "before" : "after";
   }
 
+  async function chooseImage() {
+    const file = await open({
+      title: "Kartenbild wählen",
+      filters: [{ name: "Bilder", extensions: ["png", "jpg", "jpeg", "gif", "webp"] }],
+    });
+    if (typeof file !== "string") return;
+    try {
+      const rel = await api.importDocImage(file);
+      await updateNodeMeta(node.id, { image: rel });
+    } catch (e) {
+      useStore.setState({ error: String(e) });
+    }
+  }
+
+  function onPaste(e: ClipboardEvent) {
+    // Screenshot/Bild in der Zwischenablage → als Kartenbild übernehmen.
+    const item = Array.from(e.clipboardData.items).find((i) => i.type.startsWith("image/"));
+    const file = item?.getAsFile();
+    if (!file) return;
+    e.preventDefault();
+    void (async () => {
+      try {
+        const rel = await saveClipboardImage(file);
+        await updateNodeMeta(node.id, { image: rel });
+      } catch (err) {
+        useStore.setState({ error: String(err) });
+      }
+    })();
+  }
+
   return (
     <div
       className={`card ${dropSide ? `drop-${dropSide}` : ""}`}
+      tabIndex={0}
+      onPaste={onPaste}
       draggable={synopsisDraft === null}
       onDragStart={(e) => {
         draggedCardId = node.id;
@@ -127,6 +162,8 @@ function Card({ node, parentId }: { node: BinderNode; parentId: string }) {
         {node.title}
       </div>
 
+      {node.image && <CardImage rel={node.image} />}
+
       <textarea
         className="card-synopsis"
         placeholder="Synopsis …"
@@ -148,6 +185,12 @@ function Card({ node, parentId }: { node: BinderNode; parentId: string }) {
             </option>
           ))}
         </select>
+        <button
+          title="Kartenbild wählen … (oder Karte anklicken und Screenshot mit Strg+V einfügen)"
+          onClick={() => void chooseImage()}
+        >
+          🖼
+        </button>
         <button
           className={showMeta ? "on" : ""}
           title="Farbe & Tags"
@@ -188,8 +231,19 @@ function Card({ node, parentId }: { node: BinderNode; parentId: string }) {
               void updateNodeMeta(node.id, { tags });
             }}
           />
+          {node.image && (
+            <button onClick={() => void updateNodeMeta(node.id, { image: "" })}>
+              🖼 Bild entfernen
+            </button>
+          )}
         </div>
       )}
     </div>
   );
+}
+
+function CardImage({ rel }: { rel: string }) {
+  const url = useDocImage(rel);
+  if (!url) return null;
+  return <img className="card-image" src={url} alt="" draggable={false} />;
 }

@@ -1,0 +1,259 @@
+import { useEffect, useState } from "react";
+import { ask } from "@tauri-apps/plugin-dialog";
+import { api } from "../api";
+import { PANE_IDS, useStore, type PaneResearchKind } from "../store";
+import { RESEARCH_KIND_LABELS } from "./ResearchPane";
+import type { EntityKind } from "../types";
+
+const KIND_ICON: Record<PaneResearchKind, string> = {
+  characters: "👤",
+  locations: "📍",
+  notes: "🗒",
+};
+
+type StoreState = ReturnType<typeof useStore.getState>;
+
+/** Planungsmodul: eigenständiges Werkzeug ohne Einträge-Liste (anders als
+ *  Personen/Orte/Notizen). Hier kommen künftige Module dazu — Plotstruktur,
+ *  Beziehungen, Weltenbau —, jedes zeigt sich im aktiven Bereich. */
+interface PlanningModule {
+  id: string;
+  icon: string;
+  label: string;
+  /** Wird das Modul gerade in einem Bereich angezeigt? */
+  isOpen: (s: StoreState) => boolean;
+  toggle: (s: StoreState, on: boolean) => void;
+}
+
+const PLANNING_MODULES: PlanningModule[] = [
+  {
+    id: "timeline",
+    icon: "🕘",
+    label: "Zeitstrahl",
+    isOpen: (s) => PANE_IDS.some((p) => s.panes[p].timeline),
+    toggle: (s, on) => {
+      const pane = PANE_IDS.find((p) => s.panes[p].timeline) ?? s.activePane;
+      void s.setPaneTimeline(pane, on);
+    },
+  },
+];
+
+/** Zweite Sidebar neben dem Binder: Personen, Orte, Notizen und Planungsmodule. */
+export function ResearchSidebar() {
+  return (
+    <nav className="research-sidebar sidebar">
+      <div className="binder-header">
+        <span>Planung</span>
+      </div>
+      <ResearchGroup kind="characters" />
+      <ResearchGroup kind="locations" />
+      <ResearchGroup kind="notes" />
+      <ModuleGroup />
+    </nav>
+  );
+}
+
+function ModuleGroup() {
+  const [collapsed, setCollapsed] = useState(false);
+  return (
+    <div className="research-group">
+      <div className="research-group-header" onClick={() => setCollapsed(!collapsed)}>
+        <span className="disclosure">{collapsed ? "▸" : "▾"}</span>
+        <span>Module</span>
+      </div>
+      {!collapsed && (
+        <ul className="research-group-list">
+          {PLANNING_MODULES.map((m) => (
+            <ModuleItem key={m.id} module={m} />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function ModuleItem({ module }: { module: PlanningModule }) {
+  const isOpen = useStore(module.isOpen);
+  return (
+    <li
+      className={isOpen ? "open" : ""}
+      title={isOpen ? `${module.label} schließen` : `${module.label} im aktiven Bereich öffnen`}
+      onClick={() => module.toggle(useStore.getState(), !isOpen)}
+    >
+      <span className="item-name">
+        {module.icon} {module.label}
+      </span>
+    </li>
+  );
+}
+
+function ResearchGroup({ kind }: { kind: PaneResearchKind }) {
+  const researchVersion = useStore((s) => s.researchVersion);
+  const touchResearch = useStore((s) => s.touchResearch);
+  const projectRoot = useStore((s) => s.project?.root);
+  const [items, setItems] = useState<{ id: string; name: string }[]>([]);
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    const load =
+      kind === "notes"
+        ? api.listNotes().then((l) => alive && setItems(l.map((n) => ({ id: n.id, name: n.title }))))
+        : api
+            .listEntities(kind as EntityKind)
+            .then((l) => alive && setItems(l.map((e) => ({ id: e.id, name: e.name }))));
+    void load.catch((e) => useStore.setState({ error: String(e) }));
+    return () => {
+      alive = false;
+    };
+  }, [kind, researchVersion, projectRoot]);
+
+  const labels = RESEARCH_KIND_LABELS[kind];
+
+  async function addItem() {
+    try {
+      let createdId: string | null = null;
+      if (kind === "notes") {
+        const list = await api.createNote("Neue Notiz");
+        createdId = list[list.length - 1]?.id ?? null;
+      } else {
+        const created = await api.saveEntity(kind as EntityKind, {
+          id: "",
+          name: `Neue ${labels.singular}`,
+        });
+        createdId = created.id;
+      }
+      touchResearch();
+      setCollapsed(false);
+      if (createdId) {
+        const s = useStore.getState();
+        void s.openResearchInPane(s.activePane, kind, createdId);
+      }
+    } catch (e) {
+      useStore.setState({ error: String(e) });
+    }
+  }
+
+  return (
+    <div className="research-group">
+      <div className="research-group-header" onClick={() => setCollapsed(!collapsed)}>
+        <span className="disclosure">{collapsed ? "▸" : "▾"}</span>
+        <span>{labels.plural}</span>
+        <button
+          title={`Neue ${labels.singular} anlegen`}
+          onClick={(e) => {
+            e.stopPropagation();
+            void addItem();
+          }}
+        >
+          +
+        </button>
+      </div>
+      {!collapsed && (
+        <ul className="research-group-list">
+          {items.length === 0 && <li className="muted small empty">Keine Einträge</li>}
+          {items.map((it) => (
+            <ResearchItem key={it.id} kind={kind} id={it.id} name={it.name} />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function ResearchItem({ kind, id, name }: { kind: PaneResearchKind; id: string; name: string }) {
+  const isOpen = useStore((s) =>
+    PANE_IDS.some((p) => s.panes[p].researchKind === kind && s.panes[p].researchId === id),
+  );
+  const touchResearch = useStore((s) => s.touchResearch);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(name);
+
+  const open = () => {
+    const s = useStore.getState();
+    void s.openResearchInPane(s.activePane, kind, id);
+  };
+
+  // Notizen werden hier umbenannt (das Detail hat kein Titelfeld).
+  function commitRename() {
+    setEditing(false);
+    const title = draft.trim();
+    if (kind === "notes" && title && title !== name) {
+      void api
+        .renameNote(id, title)
+        .then(() => touchResearch())
+        .catch((e) => useStore.setState({ error: String(e) }));
+    } else {
+      setDraft(name);
+    }
+  }
+
+  async function confirmDelete() {
+    const label = RESEARCH_KIND_LABELS[kind].singular;
+    const yes = await ask(`${label} "${name}" löschen? (wandert in den Papierkorb des Projekts)`, {
+      title: "Löschen",
+      kind: "warning",
+    });
+    if (!yes) return;
+    try {
+      if (kind === "notes") await api.deleteNote(id);
+      else await api.deleteEntity(kind as EntityKind, id);
+      // Panes leeren, die den gelöschten Eintrag zeigen.
+      const s = useStore.getState();
+      for (const p of PANE_IDS) {
+        if (s.panes[p].researchKind === kind && s.panes[p].researchId === id) {
+          s.setPaneResearchId(p, null);
+        }
+      }
+      touchResearch();
+    } catch (e) {
+      useStore.setState({ error: String(e) });
+    }
+  }
+
+  return (
+    <li
+      className={isOpen ? "open" : ""}
+      onClick={open}
+      onDoubleClick={() => {
+        if (kind === "notes") {
+          setDraft(name);
+          setEditing(true);
+        }
+      }}
+    >
+      {editing ? (
+        <input
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commitRename}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commitRename();
+            if (e.key === "Escape") {
+              setDraft(name);
+              setEditing(false);
+            }
+          }}
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : (
+        <>
+          <span className="item-name">
+            {KIND_ICON[kind]} {name}
+          </span>
+          <button
+            className="row-delete"
+            title="Löschen"
+            onClick={(e) => {
+              e.stopPropagation();
+              void confirmDelete();
+            }}
+          >
+            🗑
+          </button>
+        </>
+      )}
+    </li>
+  );
+}

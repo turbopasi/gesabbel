@@ -1,13 +1,16 @@
 import { useEffect, type MouseEvent as ReactMouseEvent } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { useStore, type PaneId } from "./store";
+import { PANE_IDS, PANES_FOR_MODE, useStore, type PaneId } from "./store";
 import { eventToCombo, SHORTCUT_ACTIONS } from "./settings";
 import { StartScreen } from "./components/StartScreen";
 import { Binder } from "./components/Binder";
 import { RichEditor } from "./components/RichEditor";
 import { Corkboard } from "./components/Corkboard";
 import { QuickNav } from "./components/QuickNav";
-import { Research } from "./components/Research";
+import { TimelinePanel } from "./components/TimelinePanel";
+import { ResearchPane } from "./components/ResearchPane";
+import { ResearchSidebar } from "./components/ResearchSidebar";
+import { LayoutMenu } from "./components/LayoutMenu";
 import { HistoryOverlay } from "./components/HistoryPanel";
 import { ExportOverlay } from "./components/ExportDialog";
 import { SettingsOverlay } from "./components/SettingsDialog";
@@ -63,11 +66,15 @@ function App() {
           if (s.project) s.setQuickNavOpen(!s.quickNavOpen);
         },
         toggleSplit: () => {
-          if (s.project && s.view === "write") void s.toggleSplit();
+          if (s.project) void s.cycleLayout();
         },
         toggleBinder: () =>
           s.updateSettings({
             layout: { ...s.settings.layout, binderVisible: !s.settings.layout.binderVisible },
+          }),
+        toggleResearchSidebar: () =>
+          s.updateSettings({
+            layout: { ...s.settings.layout, researchVisible: !s.settings.layout.researchVisible },
           }),
         snapshot: () => {
           if (s.project) void s.takeSnapshot("Manueller Sicherungspunkt");
@@ -99,8 +106,9 @@ function App() {
           <button onClick={clearError}>OK</button>
         </div>
       )}
-      <ConflictBanner paneId="left" />
-      <ConflictBanner paneId="right" />
+      {PANE_IDS.map((id) => (
+        <ConflictBanner key={id} paneId={id} />
+      ))}
       <ExternalChangesBanner />
       <QuickNav />
       <HistoryOverlay />
@@ -137,23 +145,24 @@ function isTypingTarget(target: EventTarget | null): boolean {
 
 function MainView() {
   const project = useStore((s) => s.project)!;
-  const splitOpen = useStore((s) => s.splitOpen);
-  const view = useStore((s) => s.view);
-  const setView = useStore((s) => s.setView);
+  const layoutMode = useStore((s) => s.layoutMode);
   const closeProject = useStore((s) => s.closeProject);
-  const toggleSplit = useStore((s) => s.toggleSplit);
   const toggleFocusMode = useStore((s) => s.toggleFocusMode);
   const takeSnapshot = useStore((s) => s.takeSnapshot);
   const snapshotNotice = useStore((s) => s.snapshotNotice);
   const setExportOpen = useStore((s) => s.setExportOpen);
   const setSettingsOpen = useStore((s) => s.setSettingsOpen);
   const binderVisible = useStore((s) => s.settings.layout.binderVisible);
-  const binderPosition = useStore((s) => s.settings.layout.binderPosition);
+  const researchVisible = useStore((s) => s.settings.layout.researchVisible);
   const updateSettings = useStore((s) => s.updateSettings);
 
   const toggleBinder = () => {
     const lay = useStore.getState().settings.layout;
     updateSettings({ layout: { ...lay, binderVisible: !lay.binderVisible } });
+  };
+  const toggleResearch = () => {
+    const lay = useStore.getState().settings.layout;
+    updateSettings({ layout: { ...lay, researchVisible: !lay.researchVisible } });
   };
 
   return (
@@ -161,81 +170,124 @@ function MainView() {
       <header className="titlebar">
         <span className="project-title">{project.meta.title}</span>
         <span className="muted small">{project.root}</span>
-        <button
-          className={view === "research" ? "on" : ""}
-          title="Personen, Orte, Notizen, Zeitstrahl"
-          onClick={() => setView(view === "research" ? "write" : "research")}
-        >
-          Recherche
-        </button>
-        {view === "write" && (
-          <>
-            <button
-              className={binderVisible ? "on" : ""}
-              title="Binder ein-/ausblenden"
-              onClick={toggleBinder}
-            >
-              Binder
-            </button>
-            <button className={splitOpen ? "on" : ""} onClick={() => void toggleSplit()}>
-              Split
-            </button>
-            <button title="Fokusmodus" onClick={toggleFocusMode}>
-              Fokus
-            </button>
-          </>
-        )}
-        <button
-          title="Manuskript als DOCX, PDF, ePub, Markdown oder Text exportieren"
-          onClick={() => setExportOpen(true)}
-        >
-          Exportieren
-        </button>
-        {snapshotNotice && <span className="small snapshot-notice">{snapshotNotice}</span>}
-        <button
-          title="Aktuellen Stand des ganzen Projekts im Verlauf sichern"
-          onClick={() => void takeSnapshot("Manueller Sicherungspunkt")}
-        >
-          Sicherungspunkt
-        </button>
-        <button title="Einstellungen (Strg+,)" onClick={() => setSettingsOpen(true)}>
-          ⚙
-        </button>
-        <button onClick={() => void closeProject()}>Projekt schließen</button>
-      </header>
-      {view === "research" ? (
-        <Research />
-      ) : (
-        <div className="panes">
-          {binderVisible && binderPosition === "left" && (
-            <>
-              <Binder />
-              <BinderResizer side="left" />
-            </>
-          )}
-          <PaneView paneId="left" />
-          {splitOpen && <PaneView paneId="right" />}
-          {binderVisible && binderPosition === "right" && (
-            <>
-              <BinderResizer side="right" />
-              <Binder />
-            </>
-          )}
+        {/* Gruppe 1: was rundherum sichtbar ist. */}
+        <div className="titlebar-group">
+          <button
+            className={binderVisible ? "on" : ""}
+            title="Binder ein-/ausblenden"
+            onClick={toggleBinder}
+          >
+            Binder
+          </button>
+          <button
+            className={researchVisible ? "on" : ""}
+            title="Planungsleiste (Personen, Orte, Notizen, Module) ein-/ausblenden"
+            onClick={toggleResearch}
+          >
+            Planung
+          </button>
+          <LayoutMenu />
+          <button title="Fokusmodus" onClick={toggleFocusMode}>
+            Fokus
+          </button>
         </div>
-      )}
+        {/* Gruppe 2: Projektaktionen. */}
+        <div className="titlebar-group">
+          <button
+            title="Manuskript als DOCX, PDF, ePub, Markdown oder Text exportieren"
+            onClick={() => setExportOpen(true)}
+          >
+            Exportieren
+          </button>
+          {snapshotNotice && <span className="small snapshot-notice">{snapshotNotice}</span>}
+          <button
+            title="Aktuellen Stand des ganzen Projekts im Verlauf sichern"
+            onClick={() => void takeSnapshot("Manueller Sicherungspunkt")}
+          >
+            Sicherungspunkt
+          </button>
+          <button title="Einstellungen (Strg+,)" onClick={() => setSettingsOpen(true)}>
+            ⚙
+          </button>
+          <button onClick={() => void closeProject()}>Projekt schließen</button>
+        </div>
+      </header>
+      <div className="panes">
+        <SidebarStack side="left" />
+        <div className="pane-grid" data-mode={layoutMode}>
+          {PANES_FOR_MODE[layoutMode].map((id) => (
+            <div key={id} className="pane-cell" style={{ gridArea: id }}>
+              <PaneView paneId={id} />
+            </div>
+          ))}
+        </div>
+        <SidebarStack side="right" />
+      </div>
     </div>
   );
 }
 
-/** Trennsteg zum Verstellen der Binder-Breite per Drag. */
-function BinderResizer({ side }: { side: "left" | "right" }) {
+/** Sidebars einer Seite in fester Reihenfolge: Binder außen, Planung innen.
+ *  Jeder Resizer sitzt an der Innenkante seiner Sidebar. */
+function SidebarStack({ side }: { side: "left" | "right" }) {
+  const layout = useStore((s) => s.settings.layout);
+  const binderHere = layout.binderVisible && layout.binderPosition === side;
+  const researchHere = layout.researchVisible && layout.researchPosition === side;
+  if (!binderHere && !researchHere) return null;
+
+  const binder = binderHere && (
+    <div className={`sidebar-slot sidebar--${side}`} key="binder">
+      <Binder />
+    </div>
+  );
+  const research = researchHere && (
+    <div className={`sidebar-slot sidebar--${side}`} key="research">
+      <ResearchSidebar />
+    </div>
+  );
+  const binderResizer = binderHere && (
+    <SidebarResizer key="binder-r" side={side} widthKey="binderWidth" />
+  );
+  const researchResizer = researchHere && (
+    <SidebarResizer key="research-r" side={side} widthKey="researchWidth" />
+  );
+
+  return side === "left" ? (
+    <>
+      {binder}
+      {binderResizer}
+      {research}
+      {researchResizer}
+    </>
+  ) : (
+    <>
+      {researchResizer}
+      {research}
+      {binderResizer}
+      {binder}
+    </>
+  );
+}
+
+/** Trennsteg zum Verstellen einer Sidebar-Breite per Drag (delta-basiert,
+ *  funktioniert daher auch mit zwei gestapelten Sidebars auf einer Seite). */
+function SidebarResizer({
+  side,
+  widthKey,
+}: {
+  side: "left" | "right";
+  widthKey: "binderWidth" | "researchWidth";
+}) {
   const onMouseDown = (e: ReactMouseEvent) => {
     e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = useStore.getState().settings.layout[widthKey];
     const move = (ev: MouseEvent) => {
-      const raw = side === "left" ? ev.clientX : window.innerWidth - ev.clientX;
+      const dx = ev.clientX - startX;
+      const raw = side === "left" ? startWidth + dx : startWidth - dx;
       const width = Math.min(500, Math.max(160, Math.round(raw)));
       const s = useStore.getState();
-      s.updateSettings({ layout: { ...s.settings.layout, binderWidth: width } });
+      s.updateSettings({ layout: { ...s.settings.layout, [widthKey]: width } });
     };
     const up = () => {
       window.removeEventListener("mousemove", move);
@@ -247,12 +299,24 @@ function BinderResizer({ side }: { side: "left" | "right" }) {
   return <div className="pane-resizer" onMouseDown={onMouseDown} />;
 }
 
-/** Zeigt je nach Pane-Zustand Corkboard (Kapitel gewählt) oder Editor. */
+/** Zeigt je nach Pane-Zustand Zeitstrahl, Corkboard, Recherche-Inhalt oder Editor. */
 function PaneView({ paneId }: { paneId: PaneId }) {
+  const timeline = useStore((s) => s.panes[paneId].timeline);
   const corkboardId = useStore((s) => s.panes[paneId].corkboardId);
-  const isActive = useStore((s) => s.activePane === paneId && s.splitOpen);
+  const researchKind = useStore((s) => s.panes[paneId].researchKind);
+  const isActive = useStore((s) => s.activePane === paneId && s.layoutMode !== "single");
   const setActivePane = useStore((s) => s.setActivePane);
 
+  if (timeline) {
+    return (
+      <section
+        className={`editor ${isActive ? "pane-active" : ""}`}
+        onMouseDownCapture={() => setActivePane(paneId)}
+      >
+        <TimelinePanel />
+      </section>
+    );
+  }
   if (corkboardId) {
     return (
       <section
@@ -263,17 +327,32 @@ function PaneView({ paneId }: { paneId: PaneId }) {
       </section>
     );
   }
+  if (researchKind) {
+    return <ResearchPane paneId={paneId} />;
+  }
   return <RichEditor paneId={paneId} />;
 }
 
 /** Szene in diesem Pane wurde extern verändert, während lokal ungespeicherte Änderungen bestehen. */
 function ConflictBanner({ paneId }: { paneId: PaneId }) {
   const saveState = useStore((s) => s.panes[paneId].saveState);
-  const splitOpen = useStore((s) => s.splitOpen);
+  const layoutMode = useStore((s) => s.layoutMode);
   const resolveConflict = useStore((s) => s.resolveConflict);
   if (saveState !== "conflict") return null;
 
-  const where = splitOpen ? (paneId === "left" ? " (linker Editor)" : " (rechter Editor)") : "";
+  const labels: Record<PaneId, string> = {
+    leftTop: "links oben",
+    leftBottom: "links unten",
+    rightTop: "rechts oben",
+    rightBottom: "rechts unten",
+  };
+  const simpleLabels: Record<string, string> = { leftTop: "links", rightTop: "rechts" };
+  const where =
+    layoutMode === "single"
+      ? ""
+      : layoutMode === "cols"
+        ? ` (Editor ${simpleLabels[paneId] ?? labels[paneId]})`
+        : ` (Editor ${labels[paneId]})`;
   return (
     <div className="banner warning">
       <span>
@@ -293,8 +372,8 @@ function ConflictBanner({ paneId }: { paneId: PaneId }) {
 /** Projektdateien wurden extern verändert (ohne lokalen Schreibkonflikt). */
 function ExternalChangesBanner() {
   const externalChanges = useStore((s) => s.externalChanges);
-  const anyConflict = useStore(
-    (s) => s.panes.left.saveState === "conflict" || s.panes.right.saveState === "conflict",
+  const anyConflict = useStore((s) =>
+    PANE_IDS.some((id) => s.panes[id].saveState === "conflict"),
   );
   const reloadProject = useStore((s) => s.reloadProject);
   if (externalChanges.length === 0 || anyConflict) return null;
