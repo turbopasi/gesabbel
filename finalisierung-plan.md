@@ -49,9 +49,27 @@ Download-Button auf `releases/latest`.
 
 ## 4. Lizenz & Repo-Hygiene
 
-Organisatorisch, betrifft die App nicht direkt:
+Überwiegend organisatorisch — bis auf die Weitergabe-Hinweise, die mit
+ausgeliefert werden müssen:
 
 - LICENSE-Datei wählen und ablegen (MIT als unkomplizierter Standard empfohlen).
+  Anschließend `license`-Feld in `package.json` und `src-tauri/Cargo.toml` setzen.
+- `THIRD-PARTY-NOTICES.md` anlegen. Die App bündelt fremde Bestandteile, deren
+  Lizenzen einen Hinweis im Auslieferungsumfang verlangen — der reine Link
+  darauf genügt nicht:
+  - **Schriften** in `public/fonts/` (Literata, IBM Plex Sans, IBM Plex Mono):
+    SIL OFL 1.1. Lizenztext und die drei Copyright-Zeilen müssen mitgeliefert
+    werden, siehe `public/fonts/README.md`.
+  - **Symbole** in `src/components/Icon.tsx` (Lucide): ISC. 13 der 32 Glyphen
+    stammen aus Feather und tragen zusätzlich MIT © Cole Bemis.
+  - **libgit2 1.9.7**, über `libgit2-sys` einkompiliert: GPL-2.0 mit
+    Linking-Ausnahme, die das Einbinden in Programme beliebiger Lizenz
+    ausdrücklich erlaubt. Nennung genügt.
+  - **MPL-2.0-Crates** (`epub-builder`, `cssparser`, `selectors`, `dtoa-short`,
+    `option-ext`): dateibezogenes Copyleft, greift nur bei Änderungen an diesen
+    Crates selbst. Nennung genügt.
+  - Alle übrigen Abhängigkeiten (JS wie Rust) sind MIT/Apache-2.0; SQLite ist
+    gemeinfrei. Keine davon schränkt die Lizenzwahl für den eigenen Code ein.
 - README ggf. um Download-/Update-Hinweise ergänzen.
 - SmartScreen-Warnung des unsignierten Windows-Installers wird bewusst akzeptiert
   (kein EV-Zertifikat, üblich bei kostenlosen Open-Source-Tools).
@@ -59,7 +77,8 @@ Organisatorisch, betrifft die App nicht direkt:
 ## Voraussetzungen vor dem Start
 
 - [ ] GitHub-Remote fürs Repo (anlegen oder verknüpfen, spätestens zum Release public)
-- [ ] Lizenz-Entscheidung
+- [ ] Lizenz-Entscheidung (MIT oder Apache-2.0; Apache-2.0 gäbe zusätzlich eine
+      ausdrückliche Patentlizenz)
 - [ ] Update-Schlüsselpaar erzeugt und privater Schlüssel gesichert
 
 ## Sinnvolle Reihenfolge
