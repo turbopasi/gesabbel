@@ -550,7 +550,7 @@ SOFTWARE.
 | log | 0.4.34 | Rust-Crate | MIT OR Apache-2.0 |
 | lopdf | 0.26.0 | Rust-Crate | MIT |
 | lzw | 0.10.0 | Rust-Crate | MIT OR Apache-2.0 |
-| markdown-it | 14.3.0 | npm-Paket | MIT |
+| markdown-it | 14.3.1 | npm-Paket | MIT |
 | markdown-it-task-lists | 2.1.1 | npm-Paket | ISC |
 | markup5ever | 0.38.0 | Rust-Crate | MIT OR Apache-2.0 |
 | mdurl | 2.1.0 | npm-Paket | MIT |
@@ -19717,7 +19717,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### markdown-it 14.3.0 — MIT
+### markdown-it 14.3.1 — MIT
 
 ```text
 Copyright (c) 2014 Vitaly Puzrin, Alex Kocharin.
