@@ -18,6 +18,23 @@ sinnvolles Git-Diffing. SQLite dient nur als regenerierbarer Such-/Index-Cache
 
 Die restlichen Schritte bis zum ersten Release stehen in [finalisierung-plan.md](finalisierung-plan.md).
 
+## Installation
+
+**[Aktuelle Version herunterladen](https://github.com/turbopasi/gesabbel/releases/latest)**
+— unter „Assets" das Windows-Setup (`.exe`) oder alternativ das `.msi`-Paket.
+Linux- und macOS-Builds folgen, sobald sie dort getestet werden können.
+
+Beim ersten Start warnt Windows SmartScreen vor einem unbekannten Herausgeber:
+die Installer sind nicht mit einem EV-Zertifikat signiert, weil ein solches
+jährlich mehrere hundert Euro kostet. Über „Weitere Informationen" →
+„Trotzdem ausführen" lässt sich die Warnung bestätigen.
+
+Aktualisiert wird die Anwendung selbst: Sie prüft beim Start, ob eine neuere
+Version vorliegt, und bietet sie als Hinweis oben im Fenster an — Herunterladen
+und Neustart erledigt sie dann selbst. Die Update-Pakete sind kryptografisch
+signiert und werden vor der Installation geprüft. Wer das nicht möchte, kann
+den Hinweis wegklicken und stattdessen jede Version von Hand installieren.
+
 ## Entwicklung
 
 Voraussetzungen: Node LTS, Rust (stable), plattformspezifische Tauri-Dependencies
@@ -34,6 +51,8 @@ npm run tauri build   # Release-Build (.exe/.msi bzw. .AppImage/.deb)
 - `src/` — React-Frontend
 - `src-tauri/` — Rust-Backend (Tauri Commands)
 - `.github/workflows/build.yml` — CI-Builds für Windows + Linux
+- `.github/workflows/release.yml` — Release aus einem Tag `v*` (signierte
+  Installer + `latest.json` fürs Selbst-Update)
 
 ## Lizenz
 

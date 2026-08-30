@@ -139,7 +139,9 @@ mitnehmen:
   und `public/vite.svg` (war das Favicon in `index.html`) sind gelöscht — beides
   fremde Logos im Bundle. Favicon ist jetzt `public/app-icon.png`, eine Kopie
   von `src-tauri/icons/32x32.png`.
-- **README um Download-/Update-Hinweise ergänzen**, sobald Releases existieren.
+- ~~**README um Download-/Update-Hinweise ergänzen**~~ — erledigt: Abschnitt
+  „Installation" mit Link auf `releases/latest`, SmartScreen-Hinweis und
+  Erklärung des Selbst-Updates.
 - **SmartScreen-Warnung** des unsignierten Windows-Installers wird bewusst
   akzeptiert (kein EV-Zertifikat, üblich bei kostenlosen Open-Source-Tools).
 
