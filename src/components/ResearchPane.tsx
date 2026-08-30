@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useStore, type PaneId, type PaneResearchKind } from "../store";
+import { DocBackdrop } from "./DocBackdrop";
 import { EntityDoc } from "./EntityDoc";
 import { DocEditor } from "./DocEditor";
 import { MentionsBar } from "./MentionsBar";
@@ -72,6 +73,7 @@ export function ResearchPane({ paneId }: { paneId: PaneId }) {
       onFocusCapture={() => setActivePane(paneId)}
       onMouseDownCapture={() => setActivePane(paneId)}
     >
+      <DocBackdrop />
       <div className="research-pane-header">
         <span className="muted small">{labels.plural}</span>
         <select

@@ -118,6 +118,14 @@ export const api = {
   /** App-weite Einstellungen (Phase 7); Schema gehört dem Frontend. */
   loadSettings: () => invoke<unknown>("load_settings"),
   saveSettings: (settings: unknown) => invoke<void>("save_settings", { settings }),
+
+  /** Kopiert ein Hintergrundbild ins App-Config-Verzeichnis; liefert den Dateinamen. */
+  importBackgroundImage: (sourcePath: string) =>
+    invoke<string>("import_background_image", { sourcePath }),
+  /** Hintergrundbild als data-URL (null, wenn die Datei fehlt). */
+  readBackgroundImage: (name: string) =>
+    invoke<string | null>("read_background_image", { name }),
+  clearBackgroundImage: () => invoke<void>("clear_background_image"),
 };
 
 /** Projektrelativer Pfad einer Szenendatei (muss zum Rust-Backend passen). */

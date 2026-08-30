@@ -6,6 +6,7 @@
 //! gehören dem Frontend (`src/settings.ts`), damit neue Optionen keine
 //! Rust-Änderung brauchen.
 
+use base64::Engine;
 use std::fs;
 use std::path::PathBuf;
 use tauri::Manager;
@@ -35,4 +36,109 @@ pub fn save_settings(app: tauri::AppHandle, settings: serde_json::Value) -> Resu
     let path = settings_path(&app)?;
     let text = serde_json::to_string_pretty(&settings).map_err(|e| e.to_string())?;
     fs::write(&path, text).map_err(|e| format!("Einstellungen nicht speicherbar: {e}"))
+}
+
+// ---------------------------------------------------------------------------
+// Hintergrundbild der Dokumentenfläche
+// ---------------------------------------------------------------------------
+//
+// Das Bild gehört zur App, nicht zum Projekt: es liegt neben der settings.json
+// im App-Config-Verzeichnis. Gespeichert wird in den Einstellungen nur der
+// Dateiname; die Anzeige holt sich das Bild als data-URL (wie die
+// Dokument-Bilder — vermeidet Asset-Protocol-Scopes).
+
+const IMAGE_EXTS: [&str; 5] = ["png", "jpg", "jpeg", "gif", "webp"];
+
+fn image_mime(ext: &str) -> &'static str {
+    match ext {
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        _ => "image/png",
+    }
+}
+
+fn background_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let dir = app
+        .path()
+        .app_config_dir()
+        .map_err(|e| format!("App-Config-Verzeichnis nicht ermittelbar: {e}"))?
+        .join("backgrounds");
+    fs::create_dir_all(&dir).map_err(|e| format!("Hintergrund-Verzeichnis nicht anlegbar: {e}"))?;
+    Ok(dir)
+}
+
+/// Prüft, dass der Name auf eine Datei direkt im backgrounds-Verzeichnis zeigt.
+fn background_file(app: &tauri::AppHandle, name: &str) -> Result<PathBuf, String> {
+    if name.is_empty()
+        || name.contains('/')
+        || name.contains('\\')
+        || name.contains("..")
+        || !name.starts_with("hintergrund-")
+    {
+        return Err(format!("Ungültiger Bildname: {name}"));
+    }
+    let ext = name.rsplit('.').next().unwrap_or("").to_lowercase();
+    if !IMAGE_EXTS.contains(&ext.as_str()) {
+        return Err(format!("Ungültiger Bildname: {name}"));
+    }
+    Ok(background_dir(app)?.join(name))
+}
+
+/// Kopiert eine Bilddatei (Dateidialog) ins App-Config-Verzeichnis und liefert
+/// ihren Dateinamen. Ältere Hintergrundbilder werden dabei entfernt — es gibt
+/// immer nur eines.
+#[tauri::command]
+pub fn import_background_image(app: tauri::AppHandle, source_path: String) -> Result<String, String> {
+    let ext = std::path::Path::new(&source_path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_lowercase())
+        .ok_or("Datei hat keine Endung")?;
+    if !IMAGE_EXTS.contains(&ext.as_str()) {
+        return Err(format!("Nicht unterstütztes Bildformat: .{ext}"));
+    }
+    let dir = background_dir(&app)?;
+    // Zeitstempel im Namen: so lädt die Anzeige nach einem Wechsel garantiert
+    // das neue Bild und nicht den zwischengespeicherten Vorgänger.
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+    let name = format!("hintergrund-{stamp}.{ext}");
+    fs::copy(&source_path, dir.join(&name)).map_err(|e| format!("Bild kopieren: {e}"))?;
+    remove_other_backgrounds(&dir, &name);
+    Ok(name)
+}
+
+/// Liefert das Hintergrundbild als data-URL (None, wenn die Datei fehlt).
+#[tauri::command]
+pub fn read_background_image(app: tauri::AppHandle, name: String) -> Result<Option<String>, String> {
+    let path = background_file(&app, &name)?;
+    let ext = name.rsplit('.').next().unwrap_or("").to_lowercase();
+    let bytes = match fs::read(&path) {
+        Ok(b) => b,
+        Err(_) => return Ok(None),
+    };
+    let b64 = base64::engine::general_purpose::STANDARD.encode(bytes);
+    Ok(Some(format!("data:{};base64,{b64}", image_mime(&ext))))
+}
+
+/// Entfernt das gespeicherte Hintergrundbild wieder.
+#[tauri::command]
+pub fn clear_background_image(app: tauri::AppHandle) -> Result<(), String> {
+    let dir = background_dir(&app)?;
+    remove_other_backgrounds(&dir, "");
+    Ok(())
+}
+
+/// Löscht alle Hintergrundbilder außer `keep`.
+fn remove_other_backgrounds(dir: &std::path::Path, keep: &str) {
+    let Ok(entries) = fs::read_dir(dir) else { return };
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if name != keep && name.starts_with("hintergrund-") {
+            let _ = fs::remove_file(entry.path());
+        }
+    }
 }

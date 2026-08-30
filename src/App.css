@@ -1140,7 +1140,35 @@ li.chapter > .binder-row > .binder-title {
   flex-direction: column;
   min-width: 0;
   border-left: 2px solid transparent;
+  /* Ebene 1: der Dokumenten-Hintergrund aus dem Theme. */
   background: var(--surface-app);
+  /* Bezugsrahmen für die Hintergrundbild-Ebene. */
+  position: relative;
+}
+
+/* Der Inhalt des Panes liegt über dem Hintergrundbild. Ohne das würde die
+   positionierte Bildebene über dem nicht positionierten Text landen.
+   Ausgenommen sind die frei schwebenden Overlays: die bringen ihre eigene
+   Positionierung samt z-index mit. */
+.editor > *:not(.doc-backdrop):not(.plan-tag-popup):not(.plan-tag-tooltip) {
+  position: relative;
+  z-index: 1;
+}
+
+/* Ebene 2: das Hintergrundbild. Es liegt im Pane, nicht im scrollenden
+   .editor-content — so steht es still, während der Text darüber läuft. */
+.editor > .doc-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-position: center center;
+}
+
+/* Der Leerzustand nutzt dieselbe Klasse zur Ausrichtung, ist aber nur ein
+   Kind des Panes — sonst würde seine Fläche das Bild verdecken. */
+.editor .editor.empty {
+  background: transparent;
 }
 
 .editor.pane-active {
@@ -1211,12 +1239,13 @@ li.chapter > .binder-row > .binder-title {
   flex-shrink: 0;
 }
 
-/* Der Schreibtisch, auf dem das Blatt liegt. */
+/* Der Schreibtisch, auf dem das Blatt liegt. Selbst durchsichtig: die Farbe
+   kommt von .editor (Ebene 1), das Hintergrundbild von .doc-backdrop (Ebene 2). */
 .editor-content {
   flex: 1;
   overflow-y: auto;
   min-height: 0;
-  background: var(--surface-app);
+  background: transparent;
   padding: var(--space-8) var(--space-8) var(--space-11);
 }
 
@@ -2123,7 +2152,9 @@ li.chapter > .binder-row > .binder-title {
   display: none;
 }
 
-.app.focus-mode .editor-content {
+/* Am Pane, nicht am Schreibtisch: der ist jetzt durchsichtig, damit das
+   Hintergrundbild auch im Fokusmodus stehen bleibt. */
+.app.focus-mode .editor {
   background: var(--surface-sunken);
 }
 
@@ -2503,6 +2534,19 @@ li.chapter > .binder-row > .binder-title {
 .settings-row select {
   flex: 1;
   min-width: 0;
+}
+
+.settings-row .spacer {
+  flex: 1;
+}
+
+/* Vorschau des Hintergrundbilds — klein genug, um die Zeile nicht zu sprengen. */
+.background-preview {
+  width: 88px;
+  height: 52px;
+  object-fit: cover;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
 }
 
 .theme-grid {

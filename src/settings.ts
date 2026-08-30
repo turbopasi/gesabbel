@@ -45,9 +45,23 @@ export interface LayoutSettings {
   researchPosition: "left" | "right";
 }
 
+/** Hintergrundbild der Dokumentenfläche (Schreibtisch, auf dem das Blatt liegt).
+ *  Das Bild selbst liegt im App-Config-Verzeichnis; hier steht nur sein Name. */
+export interface BackgroundSettings {
+  /** Dateiname im App-Config-Verzeichnis; "" = kein Bild. */
+  image: string;
+  /** "cover" = proportional füllen, "tile" = in Originalgröße wiederholen. */
+  fit: "cover" | "tile";
+  /** Deckkraft des Bildes in Prozent — darunter scheint der Theme-Hintergrund durch. */
+  opacity: number;
+  /** Deckkraft der Manuskriptseite in Prozent — darunter scheint das Bild durch. */
+  paperOpacity: number;
+}
+
 export interface AppSettings {
   theme: ThemeId;
   customTheme: ThemeColors;
+  background: BackgroundSettings;
   editor: EditorSettings;
   layout: LayoutSettings;
   /** Aktions-ID → Kürzel (kanonisch, z. B. "Ctrl+Shift+F"). "" = kein Kürzel. */
@@ -183,6 +197,7 @@ export function defaultSettings(): AppSettings {
   return {
     theme: "system",
     customTheme: { ...LIGHT_COLORS },
+    background: { image: "", fit: "cover", opacity: 100, paperOpacity: 100 },
     editor: {
       fontFamily: FONT_OPTIONS[0].value,
       // 18px auf ~34em Satzbreite: das Maß, bei dem eine Zeile in einem Blick
@@ -214,6 +229,7 @@ export function mergeSettings(loaded: unknown): AppSettings {
   return {
     theme: THEME_OPTIONS.some((t) => t.id === l.theme) ? (l.theme as ThemeId) : d.theme,
     customTheme: { ...d.customTheme, ...(l.customTheme ?? {}) },
+    background: { ...d.background, ...(l.background ?? {}) },
     editor: { ...d.editor, ...(l.editor ?? {}) },
     layout: { ...d.layout, ...(l.layout ?? {}) },
     // Defaults zuerst: neue Aktionen bekommen ihr Standard-Kürzel.
@@ -277,4 +293,20 @@ export function applySettings(s: AppSettings) {
   root.style.setProperty("--editor-hyphens", s.editor.hyphenation ? "auto" : "manual");
   root.style.setProperty("--binder-width", `${s.layout.binderWidth}px`);
   root.style.setProperty("--research-width", `${s.layout.researchWidth}px`);
+
+  applyBackground(s.background);
+}
+
+// ---------------------------------------------------------------------------
+// Hintergrundbild
+// ---------------------------------------------------------------------------
+
+/** Das Bild selbst rendert `DocBackdrop` als eigene Ebene im Pane — von hier
+ *  kommt nur die Deckkraft der Manuskriptseite, die in die Papierfarbe eingeht
+ *  (siehe --editor-paper in styles/tokens.css). */
+function applyBackground(bg: BackgroundSettings) {
+  const pct = Number.isFinite(bg.paperOpacity)
+    ? Math.min(100, Math.max(0, bg.paperOpacity))
+    : 100;
+  document.documentElement.style.setProperty("--paper-opacity", `${pct}%`);
 }

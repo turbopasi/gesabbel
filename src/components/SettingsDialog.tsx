@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { open } from "@tauri-apps/plugin-dialog";
+import { api } from "../api";
 import {
   COLOR_FIELDS,
   DARK_COLORS,
@@ -100,6 +102,118 @@ function AppearanceTab() {
         ))}
       </div>
       {settings.theme === "custom" && <CustomThemeEditor />}
+      <BackgroundEditor />
+    </>
+  );
+}
+
+/** Hintergrundbild und Deckkraft der Dokumentenfläche. */
+function BackgroundEditor() {
+  const { settings, updateSettings } = useSettings();
+  const bg = settings.background;
+  const patch = (p: Partial<AppSettings["background"]>) =>
+    updateSettings({ background: { ...bg, ...p } });
+
+  const [preview, setPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!bg.image) {
+      setPreview(null);
+      return;
+    }
+    let alive = true;
+    void api
+      .readBackgroundImage(bg.image)
+      .then((url) => {
+        if (alive) setPreview(url);
+      })
+      .catch((e) => useStore.setState({ error: String(e) }));
+    return () => {
+      alive = false;
+    };
+  }, [bg.image]);
+
+  async function chooseImage() {
+    const file = await open({
+      title: "Hintergrundbild wählen",
+      filters: [{ name: "Bilder", extensions: ["png", "jpg", "jpeg", "gif", "webp"] }],
+    });
+    if (typeof file !== "string") return;
+    try {
+      const name = await api.importBackgroundImage(file);
+      patch({ image: name });
+    } catch (e) {
+      useStore.setState({ error: String(e) });
+    }
+  }
+
+  async function removeImage() {
+    patch({ image: "" });
+    await api.clearBackgroundImage().catch(() => {});
+  }
+
+  return (
+    <>
+      <h3>Hintergrund der Dokumente</h3>
+      <div className="settings-row">
+        <span>Bild</span>
+        {preview ? (
+          <img className="background-preview" src={preview} alt="" />
+        ) : (
+          <span className="muted small">Kein Bild — es gilt der Theme-Hintergrund</span>
+        )}
+        <span className="spacer" />
+        <button onClick={() => void chooseImage()}>{bg.image ? "Ändern …" : "Wählen …"}</button>
+        {bg.image && <button onClick={() => void removeImage()}>Entfernen</button>}
+      </div>
+      <label className="settings-row">
+        <span>Darstellung</span>
+        <select
+          value={bg.fit}
+          onChange={(e) => patch({ fit: e.target.value as "cover" | "tile" })}
+          disabled={!bg.image}
+        >
+          <option value="cover">Proportional füllen</option>
+          <option value="tile">In Originalgröße wiederholen</option>
+        </select>
+      </label>
+      <label className="settings-row">
+        <span>Deckkraft des Bildes</span>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          step={1}
+          value={bg.opacity}
+          disabled={!bg.image}
+          onChange={(e) => patch({ opacity: clamp(e.target.valueAsNumber, 0, 100, 100) })}
+        />
+        <span className="muted small">{bg.opacity} %</span>
+      </label>
+      <label className="settings-row">
+        <span>Deckkraft der Schreibfläche</span>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          step={1}
+          value={bg.paperOpacity}
+          onChange={(e) => patch({ paperOpacity: clamp(e.target.valueAsNumber, 0, 100, 100) })}
+        />
+        <span className="muted small">{bg.paperOpacity} %</span>
+      </label>
+      {bg.image && bg.paperOpacity >= 100 && (
+        <p className="muted small">
+          Die Schreibfläche ist derzeit vollständig deckend — das Bild ist deshalb nur
+          neben der Manuskriptseite zu sehen. Für ein Bild hinter dem Text die Deckkraft
+          der Schreibfläche verringern.
+        </p>
+      )}
+      <p className="muted small">
+        Das Bild liegt hinter der Manuskriptseite — je durchsichtiger die Schreibfläche,
+        desto mehr davon scheint hinter dem Text durch. Es gilt für alle Dokumente aus dem
+        Binder sowie für Notizen- und Planungsdokumente.
+      </p>
     </>
   );
 }

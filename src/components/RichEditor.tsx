@@ -4,6 +4,7 @@ import StarterKit from "@tiptap/starter-kit";
 import { Markdown } from "tiptap-markdown";
 import { useStore, type PaneId } from "../store";
 import { computeStats, formatNorm } from "../stats";
+import { DocBackdrop } from "./DocBackdrop";
 import { DocImage, imagePasteHandler } from "./DocImage";
 import { PlanTag } from "./PlanTag";
 import { PlanTagCommand } from "./planTagCommand";
@@ -44,6 +45,7 @@ export function RichEditor({ paneId }: { paneId: PaneId }) {
       onFocusCapture={() => setActivePane(paneId)}
       onMouseDownCapture={() => setActivePane(paneId)}
     >
+      <DocBackdrop />
       {pane.sceneId ? (
         <EditorInstance
           key={`${pane.sceneId}:${pane.loadCounter}`}

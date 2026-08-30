@@ -268,8 +268,10 @@
   --status-info: color-mix(in oklab, var(--blue-600) 76%, var(--text));
   --status-info-soft: color-mix(in oklab, var(--blue-600) 18%, var(--bg));
 
-  /* Manuskriptseite — das eine „Objekt auf dem Schreibtisch". */
-  --editor-paper: var(--card);
+  /* Manuskriptseite — das eine „Objekt auf dem Schreibtisch".
+     --paper-opacity kommt aus den Einstellungen (Hintergrundbild): bei unter
+     100 % scheint der Schreibtisch samt Bild durch die Seite hindurch. */
+  --editor-paper: color-mix(in srgb, var(--card) var(--paper-opacity, 100%), transparent);
   --editor-rule: color-mix(in oklab, var(--text) 12%, transparent);
   --editor-selection: color-mix(in oklab, var(--highlight) 26%, transparent);
 
