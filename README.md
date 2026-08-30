@@ -4,15 +4,14 @@
 </picture>
 
 Desktop-Schreibsoftware für Autoren, gebaut mit Tauri 2.x (React + TypeScript + Vite).
-Kombiniert die besten Features von Scrivener (Binder, Corkboard, flexibler Export) und
-Papyrus Autor (deutsche Normseite, Zeitstrahl, Personen-/Ortsdatenbank).
+Bringt Binder, Corkboard, Zeitstrahl, Personen-/Ortsdatenbank, deutsche Normseite und
+flexiblen Export in einer Anwendung zusammen.
 
 **Zielplattformen:** Windows, Linux (macOS später)
 **Lizenz:** Apache-2.0 — kostenlos und Open Source
 
 **Kernprinzip Datenformat:** Ein Projekt ist ein Ordner mit vielen kleinen Dateien
-(`.autorproj`, analog Scriveners `.scriv`-Package) — keine einzelne SQLite- oder
-JSON-Datei. Das ermöglicht sichere Cloud-Synchronisation über Dropbox & Co. und
+(`.autorproj`) — keine einzelne SQLite- oder JSON-Datei. Das ermöglicht sichere Cloud-Synchronisation über Dropbox & Co. und
 sinnvolles Git-Diffing. SQLite dient nur als regenerierbarer Such-/Index-Cache
 (`.cache/index.sqlite`, nicht versioniert).
 
