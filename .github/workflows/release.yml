@@ -1,10 +1,15 @@
 # Baut aus einem Versions-Tag ein GitHub Release mit Windows-Installern.
 #
-# Ablauf: Tag `v0.1.0` pushen -> dieser Workflow baut MSI und NSIS-Setup,
-# signiert sie mit dem Update-Schlüssel, legt ein Release als Entwurf an und
-# hängt Artefakte plus `latest.json` an. Das `latest.json` ist genau die Datei,
-# die der Updater in der App unter
+# Ablauf: Version in package.json, Cargo.toml (+ Cargo.lock) und
+# tauri.conf.json anheben, Abschnitt in CHANGELOG.md schreiben, committen,
+# Tag `v0.2.0` pushen -> dieser Workflow baut MSI und NSIS-Setup, signiert sie
+# mit dem Update-Schlüssel, legt ein Release als Entwurf an und hängt
+# Artefakte plus `latest.json` an. Das `latest.json` ist genau die Datei, die
+# der Updater in der App unter
 # `releases/latest/download/latest.json` abfragt.
+#
+# Die Release-Notes stammen aus dem CHANGELOG.md-Abschnitt zur getaggten
+# Version; fehlt er, bricht der Lauf ab, bevor gebaut wird.
 #
 # Das Release entsteht als Entwurf: erst nach dem Veröffentlichen ist es
 # `releases/latest`, und erst dann sehen bestehende Installationen das Update.
@@ -36,7 +41,8 @@ jobs:
           $conf = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
           $cargo = (Select-String -Path src-tauri/Cargo.toml -Pattern '^version\s*=\s*"(.+)"' |
                     Select-Object -First 1).Matches.Groups[1].Value
-          Write-Host "Tag $tag / tauri.conf.json $conf / Cargo.toml $cargo"
+          $pkg = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          Write-Host "Tag $tag / tauri.conf.json $conf / Cargo.toml $cargo / package.json $pkg"
           if ($conf -ne $tag) {
             Write-Host "::error::Tag v$tag passt nicht zu tauri.conf.json ($conf). Version anheben, committen, Tag neu setzen."
             exit 1
@@ -45,6 +51,59 @@ jobs:
             Write-Host "::error::Tag v$tag passt nicht zu src-tauri/Cargo.toml ($cargo)."
             exit 1
           }
+          # package.json steuert zwar keinen Build, ist aber die Version, die in
+          # npm-Werkzeugen und im Repo sichtbar ist. Ohne Pruefung laeuft sie
+          # unbemerkt weg — genau das ist zwischen 0.1.0 und 0.1.1 passiert.
+          if ($pkg -ne $tag) {
+            Write-Host "::error::Tag v$tag passt nicht zu package.json ($pkg)."
+            exit 1
+          }
+
+      # Die Release-Notes kommen aus CHANGELOG.md, damit auf der Release-Seite
+      # kuratierte Prosa steht und kein Commit-Auszug. Fehlt der Abschnitt zur
+      # Version, bricht der Lauf hier ab — vor dem teuren Build.
+      - name: Release-Notes aus CHANGELOG.md schneiden
+        id: notes
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}" -replace '^v', ''
+          $lines = Get-Content CHANGELOG.md -Encoding utf8
+          $escaped = [regex]::Escape($tag)
+          $start = -1
+          for ($i = 0; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match "^##\s+$escaped(\s|$)") { $start = $i + 1; break }
+          }
+          if ($start -lt 0) {
+            Write-Host "::error::CHANGELOG.md hat keinen Abschnitt '## $tag'. Abschnitt ergaenzen, committen, Tag neu setzen."
+            exit 1
+          }
+          $section = @()
+          for ($i = $start; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match '^##\s') { break }
+            $section += $lines[$i]
+          }
+          $changelog = ($section -join "`n").Trim()
+          if (-not $changelog) {
+            Write-Host "::error::Der Abschnitt '## $tag' in CHANGELOG.md ist leer."
+            exit 1
+          }
+          # Als Array statt Here-String: so kann die YAML-Einrueckung dem
+          # Markdown nichts anhaben.
+          $hinweis = @(
+            '---',
+            '',
+            'Windows-Installer unten unter „Assets“ — `.exe` (Setup) oder `.msi`.',
+            '',
+            'Beim ersten Start warnt Windows SmartScreen vor einem unbekannten',
+            'Herausgeber; das Programm ist nicht signiert. Über „Weitere',
+            'Informationen“ → „Trotzdem ausführen“ lässt sich das bestätigen.'
+          ) -join "`n"
+          $body = $changelog + "`n`n" + $hinweis
+          Write-Host $body
+          # Mehrzeilige Step-Outputs brauchen einen Trennmarker.
+          "body<<CHANGELOG_EOF" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+          $body | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "CHANGELOG_EOF" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
 
       - uses: actions/setup-node@v5
         with:
@@ -68,12 +127,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: Gesabbel ${{ github.ref_name }}
-          releaseBody: |
-            Windows-Installer unten unter „Assets“ — `.exe` (Setup) oder `.msi`.
-
-            Beim ersten Start warnt Windows SmartScreen vor einem unbekannten
-            Herausgeber; das Programm ist nicht signiert. Über „Weitere
-            Informationen“ → „Trotzdem ausführen“ lässt sich das bestätigen.
+          releaseBody: ${{ steps.notes.outputs.body }}
           releaseDraft: true
           prerelease: false
           includeUpdaterJson: true
