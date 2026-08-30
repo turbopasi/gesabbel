@@ -387,8 +387,10 @@
   }
   .features h2 {
     font-family: var(--font-serif);
-    font-size: 28px;
+    font-weight: 600;
+    font-size: clamp(24px, 3.5vw, 34px);
     text-align: center;
+    text-wrap: balance;
     margin: 0 0 10px;
   }
   .features > .wrap > p.lead {
@@ -608,7 +610,7 @@
 
   <section class="features">
     <div class="wrap">
-      <h2>Was Gesabbel kann</h2>
+      <h2>Was Gesabbel <span class="tech-accent">kann</span></h2>
       <p class="lead">Noch wächst die Liste — das hier ist bereits da.</p>
       <div class="grid">
         <div class="card">
@@ -653,7 +655,7 @@
         Kein Electron, kein mitgeschleppter Chromium-Unterbau: Gesabbel läuft
         auf einem schlanken Rust-Backend und dem Webview des Betriebssystems.
         Das Ergebnis sind kleine Installer, ein Start in Sekundenbruchteilen
-        und eine Oberfläche, die sich sofort reagiert anfühlt.
+        und eine Oberfläche, die spürbar unmittelbar reagiert.
       </p>
       <div class="tech-badges">
         <span class="tech-badge">Rust</span>
