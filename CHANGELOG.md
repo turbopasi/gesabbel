@@ -10,6 +10,29 @@ ohne passenden Abschnitt bricht der Release-Workflow ab.
 Die Versionierung folgt der üblichen Lesart für 0.x: Die mittlere Zahl steigt
 bei neuen Funktionen, die letzte bei Fehlerbehebungen.
 
+## 0.3.0 — 2026-08-31
+
+### Neu
+
+- **Gesamtwerte des Manuskripts in der Statusleiste.** Neben Wörtern, Zeichen
+  und Normseiten des offenen Dokuments steht jetzt die Summe über alle Szenen
+  des Binders. Sie läuft beim Schreiben mit; die gewählte Normseiten-Zählweise
+  gilt für beide Werte.
+- **Fluss-Modus.** Ein neuer Schalter in der Statusleiste (neben dem
+  Schreibmaschinen-Modus) zeigt in einem Bereich alle Szenen des Kapitels am
+  Stück statt nur die ausgewählte — mit einer Trennlinie samt Szenentitel
+  dazwischen, und voll bearbeitbar. Die Szenen bleiben dabei einzelne Dateien:
+  gespeichert wird szenenweise, ebenso Verlauf und Konflikterkennung. Ein
+  Klick auf eine andere Szene desselben Kapitels springt im Fluss dorthin,
+  ohne den Widerrufen-Verlauf zu verlieren. Die Zahlen in der Statusleiste
+  gelten dann fürs Kapitel, „Verlauf" für die Szene am Cursor.
+
+### Geändert
+
+- **Recherche-Auswahl nur noch über die Sidebar.** Die Kopfzeile im
+  Recherche-Bereich und die Schnellzugriff-Buttons im leeren Bereich sind
+  entfallen; beides gab es in der Recherche-Sidebar bereits.
+
 ## 0.2.0 — 2026-08-30
 
 ### Neu
