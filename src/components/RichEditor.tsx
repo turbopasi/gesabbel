@@ -37,7 +37,6 @@ export function RichEditor({ paneId }: { paneId: PaneId }) {
   const pane = useStore((s) => s.panes[paneId]);
   const isActive = useStore((s) => s.activePane === paneId && s.layoutMode !== "single");
   const setActivePane = useStore((s) => s.setActivePane);
-  const openResearchInPane = useStore((s) => s.openResearchInPane);
 
   return (
     <section
@@ -54,19 +53,9 @@ export function RichEditor({ paneId }: { paneId: PaneId }) {
         />
       ) : (
         <div className="editor empty">
-          <p className="muted">Wähle im Binder eine Szene für diesen Bereich aus.</p>
-          <p className="muted small">… oder zeige hier Planungsinhalte an:</p>
-          <div className="empty-research-buttons">
-            <button onClick={() => void openResearchInPane(paneId, "characters", null)}>
-              👤 Personen
-            </button>
-            <button onClick={() => void openResearchInPane(paneId, "locations", null)}>
-              📍 Orte
-            </button>
-            <button onClick={() => void openResearchInPane(paneId, "notes", null)}>
-              🗒 Notizen
-            </button>
-          </div>
+          <p className="muted">
+            Wähle in der Sidebar ein Dokument oder ein Modul für diesen Bereich aus.
+          </p>
         </div>
       )}
     </section>

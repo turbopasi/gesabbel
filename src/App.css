@@ -1187,12 +1187,6 @@ li.chapter > .binder-row > .binder-title {
   margin: 0;
 }
 
-.editor.empty .empty-research-buttons {
-  display: flex;
-  gap: var(--space-4);
-  margin-top: var(--space-5);
-}
-
 .toolbar {
   display: flex;
   gap: var(--space-1);
@@ -1688,23 +1682,6 @@ li.chapter > .binder-row > .binder-title {
 
 .research-pane {
   flex-direction: column;
-}
-
-.research-pane-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  min-height: var(--toolbar-height);
-  flex-shrink: 0;
-  padding: 0 var(--space-5);
-  border-bottom: 1px solid var(--border-hairline);
-  background: var(--surface-rail);
-}
-
-.research-pane-header select {
-  flex: 1;
-  min-width: 0;
-  min-height: var(--control-height-sm);
 }
 
 .research-pane .detail-image {
