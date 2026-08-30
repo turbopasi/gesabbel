@@ -58,6 +58,18 @@ und legt ein **Release als Entwurf** an. Danach von Hand:
   Schlüssel ohne privaten konfiguriert ist.
 - Kosten: auf öffentlichem Repo kostenlos.
 
+**Welche Version zählt.** Maßgeblich ist `version` in `tauri.conf.json` — sie
+landet im Installer, in den Eigenschaften der `.exe` und in `latest.json`, und
+genau sie vergleicht der Updater. `Cargo.toml` ist nur Fallback (greift, wenn in
+`tauri.conf.json` keine steht), `package.json` liest Tauri gar nicht. Beim
+Anheben trotzdem `tauri.conf.json` und `Cargo.toml` gemeinsam ändern und die
+mitgezogene `Cargo.lock` committen.
+
+Der erste Schritt in `release.yml` bricht ab, wenn der Tag nicht zu beiden passt.
+Ohne diese Prüfung wäre ein Tag `v0.1.1` auf einer 0.1.0-Konfiguration lautlos
+durchgelaufen: Release heißt „v0.1.1", `latest.json` sagt `0.1.0`, kein
+installiertes Exemplar sieht je ein Update — und nichts davon wird rot.
+
 ## 2. Tauri-Updater — erledigt
 
 Kein eigener Server, alles über GitHub Releases:

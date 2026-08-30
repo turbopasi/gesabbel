@@ -25,6 +25,27 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # Ein Tag v0.1.1 auf einer tauri.conf.json, die noch 0.1.0 sagt, ergibt ein
+      # Release mit falschem Namen: die latest.json meldet dann 0.1.0, und keine
+      # Installation sieht je ein Update. Nichts daran wuerde von selbst
+      # auffallen, also hier abbrechen, bevor ueberhaupt gebaut wird.
+      - name: Tag und App-Version muessen uebereinstimmen
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}" -replace '^v', ''
+          $conf = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          $cargo = (Select-String -Path src-tauri/Cargo.toml -Pattern '^version\s*=\s*"(.+)"' |
+                    Select-Object -First 1).Matches.Groups[1].Value
+          Write-Host "Tag $tag / tauri.conf.json $conf / Cargo.toml $cargo"
+          if ($conf -ne $tag) {
+            Write-Host "::error::Tag v$tag passt nicht zu tauri.conf.json ($conf). Version anheben, committen, Tag neu setzen."
+            exit 1
+          }
+          if ($cargo -ne $tag) {
+            Write-Host "::error::Tag v$tag passt nicht zu src-tauri/Cargo.toml ($cargo)."
+            exit 1
+          }
+
       - uses: actions/setup-node@v5
         with:
           node-version: lts/*
