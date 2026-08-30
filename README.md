@@ -44,7 +44,88 @@ Voraussetzungen: Node LTS, Rust (stable), plattformspezifische Tauri-Dependencie
 npm install
 npm run tauri dev     # Entwicklungsmodus
 npm run tauri build   # Release-Build (.exe/.msi bzw. .AppImage/.deb)
+npm run build         # nur Frontend, inklusive Typprüfung
+npm run notices       # THIRD-PARTY-NOTICES.md neu erzeugen
+
+npx tsx scripts/align-roundtrip.test.mts
+npx tsx scripts/plan-tag-roundtrip.test.mts
 ```
+
+Ein Push auf `main` löst die CI aus (Windows + Linux). Reine Text-Änderungen
+(`**.md`, `LICENSE`, `NOTICE`, `docs/**`) sind ausgenommen.
+
+### Lizenzhinweise mitziehen
+
+`THIRD-PARTY-NOTICES.md` wird **generiert, nie von Hand bearbeitet.** Der
+Generator liest den echten Abhängigkeitsbaum und druckt jeden Lizenztext im
+Wortlaut ab — MIT und BSD verlangen den Hinweis auch bei binärer Weitergabe,
+die Pflicht gilt also für den gesamten Baum.
+
+Sobald sich eine **Abhängigkeit** in `package.json` oder `src-tauri/Cargo.toml`
+ändert, muss die Datei neu erzeugt und mitcommittet werden:
+
+```sh
+npm run notices
+```
+
+Die CI prüft das und wird rot, wenn die Datei veraltet ist. Ein reiner
+Versions-Bump zählt nicht als Änderung in diesem Sinne — das Feld `version`
+steht nicht im Abhängigkeitsbaum.
+
+### Fallstrick: unvollständige `package-lock.json`
+
+`npm install` hat schon zweimal beim Hinzufügen eines Pakets ein anderes
+stillschweigend aus dem Lock geworfen (`@floating-ui/dom`, gemeldet als
+„removed 1 package"). Lokal läuft `npm ci` danach trotzdem mit Exit-Code 0
+durch, auf den CI-Runnern bricht es ab. Nach jedem `npm install` also:
+
+```sh
+npm ls @floating-ui/dom
+```
+
+Fehlt etwas, Lock neu aufbauen und danach `npm run notices` wiederholen:
+
+```sh
+rm -rf node_modules package-lock.json && npm install
+```
+
+## Ein Release veröffentlichen
+
+Releases entstehen **ausschließlich** durch einen Tag `v*`; normale Commits auf
+`main` lösen keins aus.
+
+```sh
+# 1. version anheben — in BEIDEN Dateien, identisch:
+#    src-tauri/tauri.conf.json   <- diese zählt: sie landet in latest.json
+#    src-tauri/Cargo.toml
+
+# 2. Cargo.lock nachziehen (schnell, kein voller Build nötig)
+cargo check --manifest-path src-tauri/Cargo.toml
+
+# 3. committen und pushen
+git add -A && git commit -m "Version 0.1.1"
+git push
+
+# 4. Tag setzen — muss zur version passen
+git tag v0.1.1 && git push origin v0.1.1
+```
+
+Der Workflow prüft als Erstes, ob der Tag zu beiden Dateien passt, und bricht
+sonst nach Sekunden mit einer klaren Meldung ab. Danach baut er die Installer,
+signiert sie und legt ein Release **als Entwurf** an.
+
+**Der Entwurf wird nicht von selbst öffentlich.** Erst „Publish release" macht
+ihn zu `releases/latest` — und erst dann sehen installierte Exemplare das
+Update. Vorher lohnt der Blick auf die Assets: neben `.exe` und `.msi` muss je
+eine `.sig` hängen und eine `latest.json`. Fehlen sie, kann der Updater nichts
+ausrichten.
+
+Sinnvoll dazwischen: den Installer aus dem Entwurf einmal wirklich installieren
+und starten, bevor du veröffentlichst.
+
+Ein einmal gepushter Tag sollte nicht mehr wandern. Ging etwas schief, lieber
+mit der nächsten Nummer weitermachen, als denselben Tag zu überschreiben — sonst
+hat jemand eine andere 0.1.1 installiert und sieht nie ein Update.
 
 ## Projektstruktur
 
@@ -65,10 +146,5 @@ deren Lizenzen einen Hinweis im Auslieferungsumfang verlangen. Diese Hinweise
 stehen vollständig in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) und
 werden vom Installer neben die Anwendung gelegt.
 
-Die Datei wird aus dem tatsächlichen Abhängigkeitsbaum erzeugt und muss nach
-jeder Änderung an `package.json` oder `src-tauri/Cargo.toml` neu geschrieben
-werden:
-
-```sh
-npm run notices
-```
+Die Datei wird erzeugt, nicht gepflegt — wie und wann, steht oben unter
+[Lizenzhinweise mitziehen](#lizenzhinweise-mitziehen).

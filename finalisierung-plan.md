@@ -177,6 +177,10 @@ mitnehmen:
 2. ~~Release-Workflow~~ + erster Tag `v0.1.0` (Punkt 1)
 3. Landing Page in Ruhe gestalten (Punkt 3)
 
+> **Hinweis:** Der Release-Ablauf, die Notices-Pflicht und der Lockfile-
+> Fallstrick stehen inzwischen in der [README](README.md) — dieses Dokument
+> verschwindet nach dem ersten Release, die README bleibt.
+
 ## Nützliche Befehle
 
 ```sh
