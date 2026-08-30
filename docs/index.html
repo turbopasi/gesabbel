@@ -430,6 +430,53 @@
     margin: 0;
   }
 
+  /* -------- Tech-Sektion: bewusst invertiert, eigene Stimmung -------- */
+  .tech {
+    padding: 72px 0;
+    background: #15130f;
+    color: #e4ded1;
+    text-align: center;
+  }
+  .tech-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #83796a;
+    margin: 0 0 14px;
+  }
+  .tech h2 {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    font-size: clamp(24px, 3.5vw, 34px);
+    margin: 0 0 18px;
+    text-wrap: balance;
+  }
+  .tech-accent { color: var(--accent); }
+  .tech-sub {
+    max-width: 560px;
+    margin: 0 auto 32px;
+    color: #b6ae9e;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  .tech-badges {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  .tech-badge {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: var(--radius-pill, 999px);
+    border: 1px solid #35322b;
+    color: #cfc7b8;
+    background: #1c1a15;
+  }
+
   /* -------- Trust strip -------- */
   .trust {
     border-top: 1px solid var(--border);
@@ -594,6 +641,26 @@
           <h3>Sync- &amp; Git-freundlich</h3>
           <p>Ein Projekt ist ein Ordner mit vielen kleinen Dateien statt einer Datenbank — sauberes Diffing, sichere Cloud-Synchronisation.</p>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tech">
+    <div class="wrap">
+      <p class="tech-eyebrow">Unter der Haube</p>
+      <h2>Rust-Kern, Tauri 2.0 — <span class="tech-accent">blazing fast.</span></h2>
+      <p class="tech-sub">
+        Kein Electron, kein mitgeschleppter Chromium-Unterbau: Gesabbel läuft
+        auf einem schlanken Rust-Backend und dem Webview des Betriebssystems.
+        Das Ergebnis sind kleine Installer, ein Start in Sekundenbruchteilen
+        und eine Oberfläche, die sich sofort reagiert anfühlt.
+      </p>
+      <div class="tech-badges">
+        <span class="tech-badge">Rust</span>
+        <span class="tech-badge">Tauri 2.0</span>
+        <span class="tech-badge">React</span>
+        <span class="tech-badge">TypeScript</span>
+        <span class="tech-badge">Vite</span>
       </div>
     </div>
   </section>
