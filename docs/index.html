@@ -349,6 +349,37 @@
   .mockup-card .t { height: 6px; width: 70%; background: var(--highlight); opacity: 0.55; border-radius: 2px; margin-bottom: 6px; }
   .mockup-card .b { height: 5px; width: 90%; background: var(--border); border-radius: 2px; margin-bottom: 4px; }
 
+  /* -------- KI-Hinweis -------- */
+  .ai-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    max-width: 640px;
+    margin: 0 auto 56px;
+    padding: 14px 18px;
+    border-radius: 10px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+  }
+  .ai-banner-icon {
+    color: var(--accent);
+    font-size: 14px;
+    line-height: 1.6;
+    flex-shrink: 0;
+  }
+  .ai-banner p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+  .ai-banner a {
+    color: var(--text);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .ai-banner a:hover { color: var(--accent); }
+
   /* -------- Features -------- */
   .features {
     padding: 72px 0;
@@ -515,6 +546,18 @@
       </div>
     </div>
   </section>
+
+  <div class="wrap">
+    <div class="ai-banner">
+      <span class="ai-banner-icon" aria-hidden="true">✦</span>
+      <p>
+        Gesabbel wurde unter Einsatz von KI-Werkzeugen entwickelt. Die
+        Anwendung selbst enthält keine KI-Funktionen — kein Sprachmodell,
+        keine Datenübermittlung an KI-Dienste. Alles bleibt lokal.
+        <a href="impressum.html#ki-hinweis">Mehr dazu im Impressum</a>.
+      </p>
+    </div>
+  </div>
 
   <section class="features">
     <div class="wrap">
