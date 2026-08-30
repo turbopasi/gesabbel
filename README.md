@@ -15,7 +15,7 @@ flexiblen Export in einer Anwendung zusammen.
 sinnvolles Git-Diffing. SQLite dient nur als regenerierbarer Such-/Index-Cache
 (`.cache/index.sqlite`, nicht versioniert).
 
-Die restlichen Schritte bis zum ersten Release stehen in [finalisierung-plan.md](finalisierung-plan.md).
+**Website:** <https://turbopasi.github.io/gesabbel/>
 
 ## Installation
 
@@ -143,6 +143,7 @@ hat jemand eine andere 0.1.1 installiert und sieht nie ein Update.
 
 - `src/` — React-Frontend
 - `src-tauri/` — Rust-Backend (Tauri Commands)
+- `docs/` — Landing Page für GitHub Pages (samt Impressum)
 - `.github/workflows/build.yml` — CI-Builds für Windows + Linux
 - `.github/workflows/release.yml` — Release aus einem Tag `v*` (signierte
   Installer + `latest.json` fürs Selbst-Update)
