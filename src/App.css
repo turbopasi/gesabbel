@@ -289,6 +289,14 @@ button.icon-button.on {
   margin-top: var(--space-4);
 }
 
+/* Fusszeile: soll auffindbar sein, wenn man danach sucht, und sonst nicht
+   mit dem Einstieg konkurrieren. */
+.start-screen > p.app-version {
+  margin-top: auto;
+  padding-top: var(--space-7);
+  opacity: 0.7;
+}
+
 .start-screen .row > button {
   min-height: var(--control-height-lg);
   padding: 0 var(--space-7);

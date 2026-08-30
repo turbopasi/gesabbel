@@ -1,6 +1,17 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
+import { getVersion } from "@tauri-apps/api/app";
 import { loadRecents, useStore } from "../store";
+
+/** Version aus der Anwendung selbst, nicht aus package.json — im
+ *  Entwicklungsmodus steht hier dieselbe Nummer wie im Installer. */
+function useAppVersion() {
+  const [version, setVersion] = useState("");
+  useEffect(() => {
+    void getVersion().then(setVersion).catch(() => {});
+  }, []);
+  return version;
+}
 
 export function StartScreen() {
   const { createProject, openProject } = useStore();
@@ -8,6 +19,7 @@ export function StartScreen() {
   const [name, setName] = useState("");
   const [author, setAuthor] = useState("");
   const recents = loadRecents();
+  const version = useAppVersion();
 
   async function handleCreate() {
     if (!name.trim()) return;
@@ -90,6 +102,8 @@ export function StartScreen() {
           </ul>
         </section>
       )}
+
+      {version && <p className="muted small app-version">Version {version}</p>}
     </main>
   );
 }

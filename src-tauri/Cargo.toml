@@ -1,6 +1,6 @@
 [package]
 name = "gesabbel"
-version = "0.1.0"
+version = "0.1.1"
 description = "Desktop-Schreibsoftware für Autoren"
 authors = ["Pascal Lamers"]
 license = "Apache-2.0"
