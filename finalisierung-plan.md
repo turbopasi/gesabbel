@@ -16,28 +16,19 @@ Dieses Dokument sammelt die restlichen Schritte bis zum ersten öffentlichen Rel
 
 ## Wo wir stehen
 
-Punkte 4, 2 und 1 sind **fertig** — Lizenz/Repo-Hygiene, Updater und
-Release-Workflow. Offen ist Punkt 3 (Landing Page) und der Rest von Punkt 5.
+Punkte 4, 2, 1 und der Großteil von 5 sind **fertig**. **Offen ist nur noch
+Punkt 3, die Landing Page.**
 
-Das Schlüsselpaar ist erzeugt, der private Schlüssel liegt im Passwortmanager
-und als GitHub-Secret, der öffentliche in `tauri.conf.json`.
+Gesabbel ist veröffentlicht: v0.1.0 und v0.1.1 liegen als Releases im Repo, die
+Installer sind signiert, und das Selbst-Update wurde Ende-zu-Ende geprüft — eine
+installierte 0.1.0 hat den Banner gezeigt, das Update geladen, installiert und
+ist als 0.1.1 neu gestartet. Damit ist die Auslieferungskette vollständig
+belegt, nicht nur eingebaut.
 
-**Nächster Schritt: Tag `v0.1.0` pushen.**
-
-```sh
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-Das startet `release.yml`. Der Workflow baut die Windows-Installer, signiert sie
-und legt ein **Release als Entwurf** an. Danach von Hand:
-
-1. Installer aus dem Entwurf herunterladen und einmal wirklich installieren.
-2. Release veröffentlichen — erst dann ist es `releases/latest` und erst dann
-   sehen bestehende Installationen das Update.
-3. Für den echten Test des Updaters: `version` in `tauri.conf.json` und
-   `Cargo.toml` auf `0.1.1` heben, Tag `v0.1.1`, veröffentlichen — die
-   installierte 0.1.0 muss den Banner zeigen.
+**Der Release-Ablauf steht in der [README](README.md)**, nicht mehr hier —
+inklusive der Notices-Pflicht, des Lockfile-Fallstricks und der nötigen
+Repo-Einstellung für die Workflow-Rechte. Dieses Dokument kann verschwinden,
+sobald die Landing Page steht.
 
 ---
 
@@ -168,14 +159,26 @@ mitnehmen:
       `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` im Repo
 - [x] Updater eingebaut (Punkt 2)
 - [x] Release-Workflow (Punkt 1)
-- [ ] **Tag `v0.1.0` pushen und Release veröffentlichen** ← hier weiter
+- [x] v0.1.0 und v0.1.1 veröffentlicht, Selbst-Update Ende-zu-Ende geprüft
+- [ ] **Landing Page (Punkt 3)** ← hier weiter
 
 ## Sinnvolle Reihenfolge
 
-1. ~~Updater einbauen (Punkt 2)~~ — vor dem ersten Release, damit v0.1.0-Nutzer
-   bereits Updates empfangen können
-2. ~~Release-Workflow~~ + erster Tag `v0.1.0` (Punkt 1)
+1. ~~Updater einbauen (Punkt 2)~~
+2. ~~Release-Workflow + erster Tag `v0.1.0` (Punkt 1)~~
 3. Landing Page in Ruhe gestalten (Punkt 3)
+
+## Zwei Dinge, die beim ersten Release Zeit gekostet haben
+
+- **Workflow-Rechte.** `permissions: contents: write` im Workflow nützt nichts,
+  wenn die Repo-Einstellung auf „nur lesen" steht — der Block kann die
+  Obergrenze nicht anheben. Der Lauf baut und signiert dann vollständig und
+  scheitert erst an der letzten Zeile mit `Resource not accessible by
+  integration`. Steht jetzt in der README.
+- **„Re-run failed jobs" behält die alten Token-Rechte.** Nach dem Ändern der
+  Einstellung hat der Re-run erneut denselben Fehler geworfen; erst ein frischer
+  Lauf (Tag neu gesetzt) lief durch. Das hat zwei Bauzeiten à 20 Minuten
+  gekostet. Bei Rechte-Problemen also nie über den Re-run testen.
 
 > **Hinweis:** Der Release-Ablauf, die Notices-Pflicht und der Lockfile-
 > Fallstrick stehen inzwischen in der [README](README.md) — dieses Dokument
