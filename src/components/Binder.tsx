@@ -46,6 +46,11 @@ function BinderItem({ node }: { node: BinderNode }) {
       (p) => s.panes[p].sceneId === node.id || s.panes[p].corkboardId === node.id,
     ),
   );
+  // Im Fluss-Modus sind die übrigen Szenen des Kapitels mit offen — schwächer
+  // markiert als die ausgewählte.
+  const inFlow = useStore((s) =>
+    PANE_IDS.some((p) => s.panes[p].sceneId !== node.id && s.panes[p].flowIds.includes(node.id)),
+  );
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(node.title);
   const [dropZone, setDropZone] = useState<DropZone>(null);
@@ -116,7 +121,7 @@ function BinderItem({ node }: { node: BinderNode }) {
   return (
     <li className={node.kind}>
       <div
-        className={`binder-row ${isOpen ? "active" : ""} ${
+        className={`binder-row ${isOpen ? "active" : ""} ${inFlow ? "in-flow" : ""} ${
           dropZone ? `drop-${dropZone}` : ""
         }`}
         draggable={!editing}

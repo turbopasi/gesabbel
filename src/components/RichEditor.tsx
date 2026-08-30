@@ -1,14 +1,23 @@
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Markdown } from "tiptap-markdown";
 import { useStore, type PaneId } from "../store";
-import { computeStats, formatNorm } from "../stats";
+import {
+  addStats,
+  computeStats,
+  emptyStats,
+  formatNorm,
+  subStats,
+  type TextStats,
+} from "../stats";
+import { collectSceneIds, findNode, findParentAndIndex } from "../tree";
 import { DocBackdrop } from "./DocBackdrop";
 import { DocImage, imagePasteHandler } from "./DocImage";
 import { PlanTag } from "./PlanTag";
 import { PlanTagCommand } from "./planTagCommand";
 import { PlanTagOverlay } from "./PlanTagOverlay";
+import { SceneBreak, SCENE_BREAK_NODE } from "./SceneBreak";
 import { Icon } from "./Icon";
 import {
   AlignedHeading,
@@ -47,7 +56,8 @@ export function RichEditor({ paneId }: { paneId: PaneId }) {
       <DocBackdrop />
       {pane.sceneId ? (
         <EditorInstance
-          key={`${pane.sceneId}:${pane.loadCounter}`}
+          // Ein Fluss bleibt beim Wechsel innerhalb des Kapitels stehen.
+          key={`${pane.flowIds.join("|") || pane.sceneId}:${pane.loadCounter}`}
           paneId={paneId}
           initialContent={pane.content}
         />
@@ -73,7 +83,9 @@ function EditorInstance({
   const setContent = useStore((s) => s.setContent);
 
   const editor = useEditor({
-    extensions: docExtensions(),
+    // SceneBreak nur hier: eigenständige Dokumente (Notizen, Personen) kennen
+    // keine Szenengrenzen.
+    extensions: [...docExtensions(), SceneBreak],
     editorProps: { handlePaste: imagePasteHandler },
     content: initialContent,
     autofocus: true,
@@ -87,6 +99,21 @@ function EditorInstance({
   });
 
   const typewriter = useStore((s) => s.typewriter);
+  const focusScene = useStore((s) => s.panes[paneId].sceneId);
+  const focusCounter = useStore((s) => s.panes[paneId].focusCounter);
+
+  // Im Fluss zur ausgewählten Szene springen (Binder-Klick, Fundstelle …).
+  useEffect(() => {
+    if (!editor || !focusScene) return;
+    let pos = -1;
+    editor.state.doc.forEach((node, offset) => {
+      if (node.type.name === SCENE_BREAK_NODE && node.attrs.sceneId === focusScene) {
+        pos = offset + node.nodeSize;
+      }
+    });
+    if (pos < 0) return;
+    editor.chain().focus(pos).scrollIntoView().run();
+  }, [editor, focusScene, focusCounter]);
 
   if (!editor) return null;
 
@@ -254,14 +281,68 @@ function StatusBar({ editor, paneId }: { editor: Editor; paneId: PaneId }) {
   const setNormVariant = useStore((s) => s.setNormVariant);
   const typewriter = useStore((s) => s.typewriter);
   const toggleTypewriter = useStore((s) => s.toggleTypewriter);
+  const flowMode = useStore((s) => s.flowMode);
+  const toggleFlowMode = useStore((s) => s.toggleFlowMode);
+  const flowIds = useStore((s) => s.panes[paneId].flowIds);
 
   const text = useEditorState({
     editor,
     selector: ({ editor }) =>
-      editor.state.doc.textBetween(0, editor.state.doc.content.size, "\n", "\n"),
+      editor.state.doc
+        .textBetween(0, editor.state.doc.content.size, "\n", "\n")
+        // Leerzeilen (u. a. die Szenentrenner) sind keine Absätze.
+        .split("\n")
+        .filter((line) => line.trim())
+        .join("\n"),
+  });
+  // Szene, in der der Cursor steht — im Fluss Bezug für Verlauf und Titel.
+  const caretSceneId = useEditorState({
+    editor,
+    selector: ({ editor }) => {
+      const { from } = editor.state.selection;
+      let id: string | null = null;
+      editor.state.doc.forEach((node, offset) => {
+        if (offset <= from && node.type.name === SCENE_BREAK_NODE) id = node.attrs.sceneId;
+      });
+      return id;
+    },
   });
   const stats = useMemo(() => computeStats(text), [text]);
   const norm = normVariant === "1800" ? stats.norm1800 : stats.norm30x60;
+
+  const binder = useStore((s) => s.project?.meta.binder);
+  const sceneStats = useStore((s) => s.sceneStats);
+  // Gesamtes Manuskript: gespeicherte Zählungen aller Szenen, für die offene
+  // Szene aber der Live-Stand aus diesem Editor (andere Bereiche folgen beim
+  // nächsten automatischen Speichern).
+  const total = useMemo(() => {
+    if (!binder) return null;
+    const saved = collectSceneIds(binder).reduce(
+      (sum, id) => addStats(sum, sceneStats[id] ?? emptyStats()),
+      emptyStats(),
+    );
+    // Was dieser Editor zeigt, zählt live statt aus dem Cache.
+    const open = flowIds.length ? flowIds : sceneId ? [sceneId] : [];
+    const own = open.reduce(
+      (sum, id) => addStats(sum, sceneStats[id] ?? emptyStats()),
+      emptyStats(),
+    );
+    return addStats(subStats(saved, own), stats);
+  }, [binder, sceneStats, sceneId, flowIds, stats]);
+  const totalNorm = (t: TextStats) => (normVariant === "1800" ? t.norm1800 : t.norm30x60);
+
+  // Im Fluss beziehen sich die linken Zahlen auf das Kapitel, der Verlauf auf
+  // die Szene am Cursor.
+  const historyScene = caretSceneId ?? sceneId;
+  const historyTitle = useMemo(
+    () => (binder && historyScene ? (findNode(binder, historyScene)?.title ?? "") : ""),
+    [binder, historyScene],
+  );
+  const chapterTitle = useMemo(() => {
+    if (!binder || !sceneId) return "Kapitel";
+    const parentId = findParentAndIndex(binder, sceneId)?.parentId;
+    return (parentId && findNode(binder, parentId)?.title) || "Manuskript";
+  }, [binder, sceneId]);
 
   const saveLabel: Record<string, string> = {
     saved: "Gespeichert",
@@ -276,6 +357,7 @@ function StatusBar({ editor, paneId }: { editor: Editor; paneId: PaneId }) {
         {saveLabel[saveState]}
       </span>
       <span className="spacer" />
+      {flowIds.length > 0 && <span className="stats-scope">{chapterTitle}</span>}
       <span>{stats.words.toLocaleString("de-DE")} Wörter</span>
       <span title="Zeichen inkl. Leerzeichen / ohne Leerzeichen">
         {stats.charsWithSpaces.toLocaleString("de-DE")} /{" "}
@@ -292,6 +374,26 @@ function StatusBar({ editor, paneId }: { editor: Editor; paneId: PaneId }) {
           <option value="30x60">30 × 60</option>
         </select>
       </span>
+      {total && (
+        <span
+          className="total-stats"
+          title={
+            `Gesamtes Manuskript: ${total.charsWithSpaces.toLocaleString("de-DE")} / ` +
+            `${total.charsWithoutSpaces.toLocaleString("de-DE")} Zeichen ` +
+            "(mit / ohne Leerzeichen)"
+          }
+        >
+          Gesamt {total.words.toLocaleString("de-DE")} Wörter ·{" "}
+          {formatNorm(totalNorm(total))} Normseiten
+        </span>
+      )}
+      <button
+        className={flowMode ? "on" : ""}
+        title="Fluss: alle Szenen des Kapitels am Stück bearbeiten"
+        onClick={() => void toggleFlowMode()}
+      >
+        <Icon name="book-open" size={14} />
+      </button>
       <button
         className={typewriter ? "on" : ""}
         title="Typewriter-Scrolling: Cursorzeile bleibt mittig"
@@ -300,8 +402,12 @@ function StatusBar({ editor, paneId }: { editor: Editor; paneId: PaneId }) {
         <Icon name="keyboard" size={14} />
       </button>
       <button
-        title="Verlauf dieser Szene: frühere Versionen ansehen und wiederherstellen"
-        onClick={() => sceneId && setHistoryFor(sceneId)}
+        title={
+          historyScene
+            ? `Verlauf von "${historyTitle}": frühere Versionen ansehen und wiederherstellen`
+            : "Verlauf: frühere Versionen ansehen und wiederherstellen"
+        }
+        onClick={() => historyScene && setHistoryFor(historyScene)}
       >
         <Icon name="history" size={14} />
         Verlauf

@@ -28,6 +28,24 @@ export function isDescendant(nodes: BinderNode[], ancestorId: string, id: string
   return ancestor ? findNode(ancestor.children, id) !== null : false;
 }
 
+/** IDs aller Szenen des Binders in Manuskript-Reihenfolge. */
+export function collectSceneIds(nodes: BinderNode[]): string[] {
+  return nodes.flatMap((n) =>
+    n.kind === "scene" ? [n.id, ...collectSceneIds(n.children)] : collectSceneIds(n.children),
+  );
+}
+
+/** Szenen des Flusses, zu dem `id` gehört: alle Szenen unter demselben
+ *  Kapitel (bzw. auf der Wurzelebene) in Manuskript-Reihenfolge. */
+export function flowSceneIds(nodes: BinderNode[], id: string): string[] {
+  const parent = findParentAndIndex(nodes, id);
+  if (!parent) return [];
+  const siblings = parent.parentId
+    ? (findNode(nodes, parent.parentId)?.children ?? [])
+    : nodes;
+  return collectSceneIds(siblings);
+}
+
 /** Alle Nodes flach, mit Pfad aus Kapitel-Titeln (für Schnellnavigation). */
 export function flattenTree(
   nodes: BinderNode[],

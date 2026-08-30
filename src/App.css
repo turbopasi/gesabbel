@@ -661,6 +661,11 @@ li.chapter > .binder-row > .binder-title {
   box-shadow: inset 2px 0 0 0 var(--accent);
 }
 
+/* Fluss-Modus: übrige Szenen des offenen Kapitels nur angedeutet. */
+.binder-row.in-flow {
+  box-shadow: inset 2px 0 0 0 var(--border-subtle);
+}
+
 /* Bewusst kein Flex: nur im Inline-Fluss kürzt text-overflow lange Titel
    mit einem Auslassungszeichen statt sie hart abzuschneiden. */
 .binder-title {
@@ -1312,6 +1317,31 @@ li.chapter > .binder-row > .binder-title {
   color: var(--text-muted);
 }
 
+/* Szenentrenner im Fluss-Modus: Linie mit dem Titel der folgenden Szene. */
+.editor-content .ProseMirror .scene-break {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: 2.4em 0 1.6em;
+  user-select: none;
+  font: var(--type-small);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.editor-content .ProseMirror .scene-break::before,
+.editor-content .ProseMirror .scene-break::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--editor-rule);
+}
+
+/* Die erste Szene beginnt oben — dort keine zusätzliche Luft. */
+.editor-content .ProseMirror > .scene-break:first-child {
+  margin-top: 0;
+}
+
 /* Typewriter-Modus: Platz, damit die Cursorzeile mittig bleiben kann. */
 .editor-content.typewriter .ProseMirror {
   padding-top: 45vh;
@@ -1633,6 +1663,19 @@ li.chapter > .binder-row > .binder-title {
 
 .statusbar .spacer {
   flex: 1;
+}
+
+/* Bezug der linken Zahlen, wenn ein ganzes Kapitel im Fluss offen ist. */
+.statusbar .stats-scope {
+  font-weight: var(--weight-medium);
+  color: var(--text-strong);
+}
+
+/* Gesamtwerte des Manuskripts — abgesetzt von den Werten des Dokuments. */
+.statusbar .total-stats {
+  padding-left: var(--space-6);
+  border-left: 1px solid var(--border-hairline);
+  color: var(--text-muted);
 }
 
 /* Ein Konflikt ist der einzige Zustand in der Leiste, der Farbe bekommt. */

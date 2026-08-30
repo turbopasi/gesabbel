@@ -7,8 +7,16 @@ import {
   mergeSettings,
   type AppSettings,
 } from "./settings";
-import { loadNormVariant, saveNormVariant, type NormVariant } from "./stats";
-import { findNode } from "./tree";
+import {
+  computeStats,
+  loadNormVariant,
+  plainTextFromMarkdown,
+  saveNormVariant,
+  type NormVariant,
+  type TextStats,
+} from "./stats";
+import { joinFlow, normalizeScene, splitFlow } from "./flow";
+import { collectSceneIds, findNode, flowSceneIds } from "./tree";
 import type { NodeKind, ProjectInfo } from "./types";
 
 export type SaveState = "saved" | "dirty" | "saving" | "conflict";
@@ -43,7 +51,14 @@ export type PlanIndex = Record<PaneResearchKind, PlanIndexEntry[]>;
 const emptyPlanIndex = (): PlanIndex => ({ characters: [], locations: [], notes: [] });
 
 export interface Pane {
+  /** Ausgewählte Szene; im Fluss die zuletzt angesprungene. */
   sceneId: string | null;
+  /** Szenen des Flusses in Reihenfolge (leer = einzelnes Dokument). */
+  flowIds: string[];
+  /** Zuletzt geladener bzw. gespeicherter Stand je Szene des Flusses. */
+  flowSaved: Record<string, string>;
+  /** Erhöht sich, wenn im Fluss zu `sceneId` gescrollt werden soll. */
+  focusCounter: number;
   /** Kapitel-ID, wenn dieser Pane das Corkboard eines Kapitels zeigt (statt Editor). */
   corkboardId: string | null;
   /** Recherche-Inhalt (Person/Ort/Notiz) statt Editor. */
@@ -63,9 +78,13 @@ export interface Pane {
 const AUTOSAVE_MS = 2000;
 const RECENTS_KEY = "gesabbel.recents";
 const TYPEWRITER_KEY = "gesabbel.typewriter";
+const FLOW_KEY = "gesabbel.flowMode";
 
 const emptyPane = (): Pane => ({
   sceneId: null,
+  flowIds: [],
+  flowSaved: {},
+  focusCounter: 0,
   corkboardId: null,
   researchKind: null,
   researchId: null,
@@ -107,6 +126,8 @@ interface Store {
   activePane: PaneId;
   focusMode: boolean;
   typewriter: boolean;
+  /** Fluss-Modus: ein Bereich zeigt alle Szenen des Kapitels am Stück. */
+  flowMode: boolean;
   normVariant: NormVariant;
   /** Projektrelative Pfade, die extern (Dropbox, zweite Maschine, …) geändert wurden. */
   externalChanges: string[];
@@ -163,7 +184,14 @@ interface Store {
   toggleFocusMode: () => void;
   setFocusMode: (on: boolean) => void;
   toggleTypewriter: () => void;
+  /** Schaltet den Fluss-Modus um und lädt die offenen Bereiche entsprechend neu. */
+  toggleFlowMode: () => Promise<void>;
   setNormVariant: (v: NormVariant) => void;
+  /** Zählung je Szene (Stand der gespeicherten Dateien) — Basis für die
+   *  Gesamtwerte des Manuskripts in der Statusleiste. */
+  sceneStats: Record<string, TextStats>;
+  /** Liest alle Szenen des Binders neu ein (beim Öffnen/Neuladen eines Projekts). */
+  refreshSceneStats: () => Promise<void>;
   createNode: (parentId: string | null, kind: NodeKind, title: string) => Promise<void>;
   renameNode: (id: string, title: string) => Promise<void>;
   moveNode: (id: string, newParentId: string | null, index: number) => Promise<void>;
@@ -206,6 +234,121 @@ export const useStore = create<Store>((set, get) => {
 
   const fail = (e: unknown) => set({ error: String(e) });
 
+  /** Zählung einer Szene aus ihrem Markdown übernehmen (ohne Dateizugriff). */
+  const cacheSceneStats = (sceneId: string, markdown: string) =>
+    set((s) => ({
+      sceneStats: {
+        ...s.sceneStats,
+        [sceneId]: computeStats(plainTextFromMarkdown(markdown)),
+      },
+    }));
+
+  /** Öffnet eine Szene in einem Bereich — je nach Modus allein oder als Fluss
+   *  aller Szenen ihres Kapitels. */
+  const openScene = async (paneId: PaneId, id: string) => {
+    const binder = get().project?.meta.binder ?? [];
+    const flowIds = get().flowMode ? flowSceneIds(binder, id) : [];
+    const pane = get().panes[paneId];
+    const common = {
+      sceneId: id,
+      corkboardId: null,
+      researchKind: null,
+      researchId: null,
+      timeline: false,
+      saveState: "saved" as SaveState,
+      loadCounter: pane.loadCounter + 1,
+      focusCounter: pane.focusCounter + 1,
+    };
+    try {
+      if (flowIds.length) {
+        const parts = await Promise.all(
+          flowIds.map(async (sceneId) => ({
+            id: sceneId,
+            content: normalizeScene(await api.readScene(sceneId)),
+          })),
+        );
+        for (const part of parts) cacheSceneStats(part.id, part.content);
+        patchPane(paneId, {
+          ...common,
+          content: joinFlow(parts),
+          flowIds,
+          flowSaved: Object.fromEntries(parts.map((p) => [p.id, p.content])),
+        });
+      } else {
+        const content = await api.readScene(id);
+        cacheSceneStats(id, content);
+        patchPane(paneId, { ...common, content, flowIds: [], flowSaved: {} });
+      }
+    } catch (e) {
+      fail(e);
+    }
+  };
+
+  /** Speichert einen Fluss: jede geänderte Szene wandert in ihre eigene Datei. */
+  const flushFlow = async (paneId: PaneId) => {
+    const pane = get().panes[paneId];
+    const written = pane.content;
+    const parts = splitFlow(written, pane.flowIds);
+    if (!parts.length) {
+      // Ohne Trenner ist nicht mehr zuzuordnen, wohin der Text gehört.
+      patchPane(paneId, { saveState: "dirty" });
+      set({ error: "Die Szenentrenner fehlen — bitte den Bereich neu laden." });
+      return;
+    }
+    patchPane(paneId, { saveState: "saving" });
+    const binder = get().project?.meta.binder ?? [];
+    const saved = { ...pane.flowSaved };
+    let conflict = false;
+    try {
+      for (const part of parts) {
+        // Inzwischen gelöschte Szenen nicht wieder anlegen.
+        if (part.content === saved[part.id] || !findNode(binder, part.id)) continue;
+        const result = await api.writeScene(part.id, part.content);
+        if (result.status === "conflict") {
+          conflict = true;
+          continue;
+        }
+        saved[part.id] = part.content;
+        cacheSceneStats(part.id, part.content);
+      }
+    } catch (e) {
+      patchPane(paneId, { flowSaved: saved, saveState: "dirty" });
+      fail(e);
+      return;
+    }
+    const now = get().panes[paneId];
+    patchPane(paneId, {
+      flowSaved: saved,
+      saveState: conflict ? "conflict" : now.content === written ? "saved" : "dirty",
+    });
+  };
+
+  /** Nach Änderungen am Binder: offene Flüsse an die neue Struktur anpassen
+   *  (neue/verschobene/gelöschte Szenen des Kapitels). */
+  const resyncFlows = async () => {
+    const binder = get().project?.meta.binder ?? [];
+    for (const paneId of PANE_IDS) {
+      const pane = get().panes[paneId];
+      if (!pane.flowIds.length) continue;
+      const anchor =
+        pane.sceneId && findNode(binder, pane.sceneId)
+          ? pane.sceneId
+          : (pane.flowIds.find((id) => findNode(binder, id)) ?? null);
+      if (!anchor) {
+        patchPane(paneId, emptyPane());
+        continue;
+      }
+      const ids = flowSceneIds(binder, anchor);
+      const same =
+        anchor === pane.sceneId &&
+        ids.length === pane.flowIds.length &&
+        ids.every((id, i) => id === pane.flowIds[i]);
+      if (same) continue;
+      await get().flushPane(paneId);
+      await openScene(paneId, anchor);
+    }
+  };
+
   /** Bereich für einen Sprung aus `paneId` heraus — bevorzugt einer, in dem
    *  gerade kein Text bearbeitet wird; im Einzel-Layout wird aufgeteilt. */
   const neighbourPane = async (paneId: PaneId): Promise<PaneId> => {
@@ -224,8 +367,10 @@ export const useStore = create<Store>((set, get) => {
       layoutMode: "single",
       activePane: "leftTop" as PaneId,
       externalChanges: [],
+      sceneStats: {},
     });
     void get().refreshPlanIndex();
+    void get().refreshSceneStats();
   };
 
   return {
@@ -235,7 +380,9 @@ export const useStore = create<Store>((set, get) => {
     activePane: "leftTop",
     focusMode: false,
     typewriter: localStorage.getItem(TYPEWRITER_KEY) === "1",
+    flowMode: localStorage.getItem(FLOW_KEY) === "1",
     normVariant: loadNormVariant(),
+    sceneStats: {},
     externalChanges: [],
     error: null,
 
@@ -271,27 +418,18 @@ export const useStore = create<Store>((set, get) => {
     selectScene: async (id) => {
       const paneId = get().activePane;
       const pane = get().panes[paneId];
-      if (pane.sceneId === id && !pane.corkboardId && !pane.researchKind) {
-        // Gleiche Szene: nur einen darüberliegenden Zeitstrahl wegblenden.
+      const shown = pane.flowIds.length ? pane.flowIds.includes(id) : pane.sceneId === id;
+      if (shown && !pane.corkboardId && !pane.researchKind) {
+        // Schon offen: nur einen darüberliegenden Zeitstrahl wegblenden und im
+        // Fluss zur gewählten Szene springen (kein Neuladen, kein Undo-Verlust).
         if (pane.timeline) patchPane(paneId, { timeline: false });
+        if (pane.flowIds.length) {
+          patchPane(paneId, { sceneId: id, focusCounter: pane.focusCounter + 1 });
+        }
         return;
       }
       await get().flushPane(paneId);
-      try {
-        const content = await api.readScene(id);
-        patchPane(paneId, {
-          sceneId: id,
-          corkboardId: null,
-          researchKind: null,
-          researchId: null,
-          timeline: false,
-          content,
-          saveState: "saved",
-          loadCounter: pane.loadCounter + 1,
-        });
-      } catch (e) {
-        fail(e);
-      }
+      await openScene(paneId, id);
     },
 
     selectChapter: async (id) => {
@@ -303,6 +441,8 @@ export const useStore = create<Store>((set, get) => {
       await get().flushPane(paneId);
       patchPane(paneId, {
         sceneId: null,
+        flowIds: [],
+        flowSaved: {},
         corkboardId: id,
         researchKind: null,
         researchId: null,
@@ -350,9 +490,11 @@ export const useStore = create<Store>((set, get) => {
 
     flushPane: async (paneId) => {
       const pane = get().panes[paneId];
-      if (!pane.sceneId || pane.saveState !== "dirty") return;
+      if (pane.saveState !== "dirty") return;
       const t = autosaveTimers[paneId];
       if (t) clearTimeout(t);
+      if (pane.flowIds.length) return flushFlow(paneId);
+      if (!pane.sceneId) return;
       const written = pane.content;
       patchPane(paneId, { saveState: "saving" });
       try {
@@ -360,6 +502,7 @@ export const useStore = create<Store>((set, get) => {
         if (result.status === "conflict") {
           patchPane(paneId, { saveState: "conflict" });
         } else {
+          cacheSceneStats(pane.sceneId, written);
           // Nur "saved", wenn währenddessen nicht weitergetippt wurde.
           const now = get().panes[paneId];
           patchPane(paneId, { saveState: now.content === written ? "saved" : "dirty" });
@@ -377,12 +520,33 @@ export const useStore = create<Store>((set, get) => {
     resolveConflict: async (paneId, action) => {
       const pane = get().panes[paneId];
       if (!pane.sceneId) return;
+      if (pane.flowIds.length) {
+        try {
+          if (action === "overwrite") {
+            const saved = { ...pane.flowSaved };
+            for (const part of splitFlow(pane.content, pane.flowIds)) {
+              if (part.content === saved[part.id]) continue;
+              await api.writeScene(part.id, part.content, true);
+              saved[part.id] = part.content;
+              cacheSceneStats(part.id, part.content);
+            }
+            patchPane(paneId, { flowSaved: saved, saveState: "saved" });
+          } else {
+            await openScene(paneId, pane.sceneId);
+          }
+        } catch (e) {
+          fail(e);
+        }
+        return;
+      }
       try {
         if (action === "overwrite") {
           await api.writeScene(pane.sceneId, pane.content, true);
+          cacheSceneStats(pane.sceneId, pane.content);
           patchPane(paneId, { saveState: "saved" });
         } else {
           const content = await api.readScene(pane.sceneId);
+          cacheSceneStats(pane.sceneId, content);
           patchPane(paneId, {
             content,
             saveState: "saved",
@@ -439,6 +603,8 @@ export const useStore = create<Store>((set, get) => {
       await get().flushPane(paneId);
       patchPane(paneId, {
         sceneId: null,
+        flowIds: [],
+        flowSaved: {},
         corkboardId: null,
         researchKind: kind,
         researchId: id,
@@ -505,14 +671,53 @@ export const useStore = create<Store>((set, get) => {
       set({ typewriter: next });
     },
 
+    toggleFlowMode: async () => {
+      await get().flushAll();
+      const next = !get().flowMode;
+      localStorage.setItem(FLOW_KEY, next ? "1" : "0");
+      set({ flowMode: next });
+      // Offene Szenen im neuen Modus neu aufbauen.
+      for (const paneId of PANE_IDS) {
+        const sceneId = get().panes[paneId].sceneId;
+        if (sceneId) await openScene(paneId, sceneId);
+      }
+    },
+
     setNormVariant: (v) => {
       saveNormVariant(v);
       set({ normVariant: v });
     },
 
+    refreshSceneStats: async () => {
+      const project = get().project;
+      if (!project) {
+        set({ sceneStats: {} });
+        return;
+      }
+      const ids = collectSceneIds(project.meta.binder);
+      const entries = await Promise.all(
+        ids.map(async (id) => {
+          try {
+            return [id, computeStats(plainTextFromMarkdown(await api.readScene(id)))] as const;
+          } catch {
+            // Eine unlesbare Szene zählt als leer — Gesamtwerte sind Komfort.
+            return null;
+          }
+        }),
+      );
+      // Nur übernehmen, wenn dasselbe Projekt noch offen ist.
+      if (get().project?.root !== project.root) return;
+      set({
+        sceneStats: Object.fromEntries(
+          entries.filter((e): e is NonNullable<typeof e> => e !== null),
+        ),
+      });
+    },
+
     createNode: async (parentId, kind, title) => {
       try {
         set({ project: await api.createNode(parentId, kind, title) });
+        await resyncFlows();
       } catch (e) {
         fail(e);
       }
@@ -529,6 +734,7 @@ export const useStore = create<Store>((set, get) => {
     moveNode: async (id, newParentId, index) => {
       try {
         set({ project: await api.moveNode(id, newParentId, index) });
+        await resyncFlows();
       } catch (e) {
         fail(e);
       }
@@ -541,11 +747,13 @@ export const useStore = create<Store>((set, get) => {
         // Panes leeren, deren Szene/Kapitel es nicht mehr gibt.
         for (const paneId of PANE_IDS) {
           const pane = get().panes[paneId];
+          if (pane.flowIds.length) continue; // übernimmt resyncFlows
           const ref = pane.sceneId ?? pane.corkboardId;
           if (ref && !findNode(project.meta.binder, ref)) {
             patchPane(paneId, emptyPane());
           }
         }
+        await resyncFlows();
       } catch (e) {
         fail(e);
       }
@@ -567,6 +775,7 @@ export const useStore = create<Store>((set, get) => {
       try {
         const project = await api.openProject(root);
         set({ project, externalChanges: [] });
+        void get().refreshSceneStats();
         // Offene Szenen neu einlesen (außer bei ungelöstem Konflikt).
         for (const paneId of PANE_IDS) {
           const pane = get().panes[paneId];
@@ -578,12 +787,9 @@ export const useStore = create<Store>((set, get) => {
           if (!findNode(project.meta.binder, pane.sceneId)) {
             patchPane(paneId, emptyPane());
           } else if (pane.saveState !== "conflict") {
-            const content = await api.readScene(pane.sceneId);
-            patchPane(paneId, {
-              content,
-              saveState: "saved",
-              loadCounter: pane.loadCounter + 1,
-            });
+            // Auch der Fluss wird über openScene neu aufgebaut (Kapitel kann
+            // sich extern geändert haben).
+            await openScene(paneId, pane.sceneId);
           }
         }
       } catch (e) {
@@ -628,9 +834,13 @@ export const useStore = create<Store>((set, get) => {
       await get().flushAll();
       try {
         const content = await api.restoreVersion(commitId, sceneRelPath(sceneId));
+        cacheSceneStats(sceneId, content);
         for (const paneId of PANE_IDS) {
           const pane = get().panes[paneId];
-          if (pane.sceneId === sceneId) {
+          if (pane.flowIds.includes(sceneId)) {
+            // Im Fluss steckt die Szene mitten im Dokument — komplett neu bauen.
+            await openScene(paneId, pane.sceneId ?? sceneId);
+          } else if (pane.sceneId === sceneId) {
             patchPane(paneId, {
               content,
               saveState: "saved",
