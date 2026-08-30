@@ -94,6 +94,19 @@ rm -rf node_modules package-lock.json && npm install
 Releases entstehen **ausschließlich** durch einen Tag `v*`; normale Commits auf
 `main` lösen keins aus.
 
+Einmalige Voraussetzung im Repository: **Settings → Actions → General →
+Workflow permissions** muss auf „Read and write permissions" stehen. Sonst darf
+der Workflow zwar bauen und signieren, aber kein Release anlegen, und bricht
+ganz am Ende mit `Resource not accessible by integration` ab. Wichtig dabei:
+Nach dem Ändern der Einstellung hilft „Re-run failed jobs" nicht — der Re-run
+behält die alten Token-Rechte. Es braucht einen frischen Lauf, notfalls durch
+Neusetzen des Tags:
+
+```sh
+git push origin :refs/tags/v0.1.0 && git tag -d v0.1.0
+git tag v0.1.0 && git push origin v0.1.0
+```
+
 ```sh
 # 1. version anheben — in BEIDEN Dateien, identisch:
 #    src-tauri/tauri.conf.json   <- diese zählt: sie landet in latest.json
