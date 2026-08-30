@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Impressum — Gesabbel</title>
+<meta name="description" content="Offenlegung gemäß § 5 ECG für die Gesabbel-Website." />
+<meta name="robots" content="noindex" />
+<link rel="icon" type="image/png" href="app-icon.png" />
+<link rel="apple-touch-icon" href="icon-256.png" />
+
+<style>
+  /* -------- Schriften: lokal, kein CDN -------- */
+  @font-face {
+    font-family: "Literata";
+    font-style: normal;
+    font-weight: 200 900;
+    font-display: swap;
+    src: url("fonts/literata-latin-wght-normal.woff2") format("woff2-variations");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+      U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212,
+      U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: "Literata";
+    font-style: normal;
+    font-weight: 200 900;
+    font-display: swap;
+    src: url("fonts/literata-latin-ext-wght-normal.woff2") format("woff2-variations");
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF,
+      U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  }
+  @font-face {
+    font-family: "IBM Plex Sans";
+    font-style: normal;
+    font-weight: 100 700;
+    font-display: swap;
+    src: url("fonts/ibm-plex-sans-latin-wght-normal.woff2") format("woff2-variations");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+      U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212,
+      U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: "IBM Plex Sans";
+    font-style: normal;
+    font-weight: 100 700;
+    font-display: swap;
+    src: url("fonts/ibm-plex-sans-latin-ext-wght-normal.woff2") format("woff2-variations");
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF,
+      U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  }
+  @font-face {
+    font-family: "IBM Plex Mono";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+      U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212,
+      U+2215, U+FEFF, U+FFFD;
+  }
+
+  /* -------- Tokens (Auszug aus dem "Manuscript"-Designsystem der App) -------- */
+  :root {
+    --bg: #faf6ef;
+    --text: #2a2620;
+    --panel: #f2ede3;
+    --border: #dcd3c3;
+    --accent: #31bdf8;
+    --accent-text: #0b2531;
+    --card: #fffdf9;
+    --highlight: #b07d34;
+    --text-muted: #6e6759;
+    --text-faint: #948c7c;
+
+    --font-serif: "Literata", Charter, "Iowan Old Style", Georgia, serif;
+    --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, Consolas, Menlo, monospace;
+
+    --shadow-2: 0 1px 2px rgba(21, 19, 15, 0.06), 0 4px 10px rgba(21, 19, 15, 0.08);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141310;
+      --text: #e4ded1;
+      --panel: #1b1a16;
+      --border: #2e2c26;
+      --accent: #31bdf8;
+      --accent-text: #0b2531;
+      --card: #1b1a16;
+      --highlight: #d8b378;
+      --text-muted: #b6ae9e;
+      --text-faint: #83796a;
+      --shadow-2: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 10px rgba(0, 0, 0, 0.35);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { color-scheme: light dark; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+
+  .wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  header.nav {
+    padding: 20px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .nav .wrap {
+    max-width: 1080px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: var(--text);
+    font: 600 15px var(--font-serif);
+  }
+  .brand-icon {
+    display: block;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+  }
+  .nav-links a {
+    text-decoration: none;
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+  .nav-links a:hover { color: var(--text); }
+
+  main {
+    padding: 56px 0 72px;
+  }
+  h1 {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    font-size: 30px;
+    margin: 0 0 8px;
+  }
+  .lead {
+    color: var(--text-muted);
+    margin: 0 0 36px;
+    font-size: 14px;
+  }
+  section.card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 26px 28px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-2);
+  }
+  section.card h2 {
+    font-family: var(--font-serif);
+    font-size: 17px;
+    font-weight: 600;
+    margin: 0 0 14px;
+  }
+  dl {
+    margin: 0;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 8px 16px;
+  }
+  dt {
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  dd {
+    margin: 0;
+  }
+  section.card p {
+    margin: 0 0 10px;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+  section.card p:last-child { margin-bottom: 0; }
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    color: var(--text-muted);
+    text-decoration: none;
+    margin-bottom: 28px;
+  }
+  .back-link:hover { color: var(--text); }
+
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 32px 0 48px;
+  }
+  footer .wrap {
+    max-width: 1080px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--text-faint);
+  }
+  footer a { color: var(--text-muted); text-decoration: none; }
+  footer a:hover { color: var(--text); }
+  footer .links { display: flex; gap: 18px; }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="index.html" aria-label="Gesabbel — zur Startseite">
+      <img class="brand-icon" src="icon-256.png" alt="" width="24" height="24" />
+      Gesabbel
+    </a>
+    <div class="nav-links">
+      <a href="https://github.com/turbopasi/gesabbel" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <a class="back-link" href="index.html">← Zurück zu Gesabbel</a>
+    <h1>Impressum</h1>
+    <p class="lead">Offenlegung gemäß § 5 E-Commerce-Gesetz (ECG)</p>
+
+    <section class="card">
+      <h2>Diensteanbieter</h2>
+      <dl>
+        <dt>Name</dt>
+        <dd>Pascal Lamers</dd>
+        <dt>Anschrift</dt>
+        <dd>Fürstenstraße 5, 5400 Hallein, Österreich</dd>
+        <dt>E-Mail</dt>
+        <dd><a href="mailto:gesabbel@pascal-lamers.at">gesabbel@pascal-lamers.at</a></dd>
+      </dl>
+    </section>
+
+    <section class="card">
+      <h2>Über dieses Projekt</h2>
+      <p>
+        Gesabbel ist ein privates, nicht-kommerzielles Open-Source-Projekt. Die
+        Software wird kostenlos unter der Apache-Lizenz 2.0 zur Verfügung
+        gestellt; diese Website dient ausschließlich der Information über das
+        Projekt und dem Download der Anwendung.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Haftungsausschluss</h2>
+      <p>
+        Trotz sorgfältiger inhaltlicher Kontrolle wird keine Haftung für die
+        Inhalte externer Links übernommen. Für den Inhalt verlinkter Seiten
+        sind ausschließlich deren Betreiber verantwortlich.
+      </p>
+    </section>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 Pascal Lamers</span>
+    <div class="links">
+      <a href="index.html">Startseite</a>
+      <a href="https://github.com/turbopasi/gesabbel" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
