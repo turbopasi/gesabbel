@@ -25,6 +25,17 @@ import {
   MarkdownTextAlign,
 } from "./TextAlignMarkdown";
 
+/** Ob gerade woanders aktiv getippt wird (z. B. Umbenennen im Binder) — dann
+ *  darf ein Editor sich nicht per Autofocus/Sprung den Fokus greifen. */
+function isTypingElsewhere(editor: Editor): boolean {
+  const active = document.activeElement;
+  return (
+    active instanceof HTMLElement &&
+    (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.isContentEditable) &&
+    !editor.view.dom.contains(active)
+  );
+}
+
 /** Gemeinsame Extensions aller Dokument-Editoren (Szenen wie Recherche). */
 export function docExtensions() {
   return [
@@ -88,7 +99,11 @@ function EditorInstance({
     extensions: [...docExtensions(), SceneBreak],
     editorProps: { handlePaste: imagePasteHandler },
     content: initialContent,
-    autofocus: true,
+    // Kein autofocus: true — das würde beim Neuaufbau des Editors (z. B. wenn
+    // im Fluss-Modus ein Wechsel in eine andere „Wurst“ das Nachladen der
+    // Szenen anstößt) den Fokus reißen, selbst wenn woanders gerade aktiv
+    // getippt wird (z. B. Umbenennen im Binder). Stattdessen unten manuell
+    // und mit Rücksicht darauf fokussieren.
     onUpdate: ({ editor }) => {
       setContent(paneId, getMarkdown(editor));
       if (useStore.getState().typewriter) centerCaret(editor);
@@ -112,8 +127,24 @@ function EditorInstance({
       }
     });
     if (pos < 0) return;
+    // Kein Fokus-Klau, während woanders aktiv getippt wird (z. B. Umbenennen
+    // im Binder) — sonst reißt der Sprung dem Eingabefeld den Fokus weg.
+    if (isTypingElsewhere(editor)) {
+      editor.chain().setTextSelection(pos).scrollIntoView().run();
+      return;
+    }
     editor.chain().focus(pos).scrollIntoView().run();
   }, [editor, focusScene, focusCounter]);
+
+  // Einmaliger Autofocus pro Editor-Instanz (Neuaufbau bei Szenen-/Fluss-
+  // Wechsel) — außer es wird gerade woanders aktiv getippt (z. B. Umbenennen
+  // im Binder, das per Doppelklick genau so einen Wechsel auslöst).
+  useEffect(() => {
+    if (!editor) return;
+    if (isTypingElsewhere(editor)) return;
+    editor.commands.focus("end");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor]);
 
   if (!editor) return null;
 
@@ -339,7 +370,7 @@ function StatusBar({ editor, paneId }: { editor: Editor; paneId: PaneId }) {
     [binder, historyScene],
   );
   const chapterTitle = useMemo(() => {
-    if (!binder || !sceneId) return "Kapitel";
+    if (!binder || !sceneId) return "Ordner";
     const parentId = findParentAndIndex(binder, sceneId)?.parentId;
     return (parentId && findNode(binder, parentId)?.title) || "Manuskript";
   }, [binder, sceneId]);
@@ -389,7 +420,7 @@ function StatusBar({ editor, paneId }: { editor: Editor; paneId: PaneId }) {
       )}
       <button
         className={flowMode ? "on" : ""}
-        title="Fluss: alle Szenen des Kapitels am Stück bearbeiten"
+        title="Fluss: alle Dokumente des Ordners am Stück bearbeiten"
         onClick={() => void toggleFlowMode()}
       >
         <Icon name="book-open" size={14} />

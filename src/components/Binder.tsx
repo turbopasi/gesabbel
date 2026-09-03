@@ -22,11 +22,11 @@ export function Binder() {
       <div className="binder-header">
         <span>Binder</span>
         <button
-          title="Neues Kapitel"
-          onClick={() => void createNode(null, "chapter", "Neues Kapitel")}
+          title="Neuer Ordner"
+          onClick={() => void createNode(null, "chapter", "Ordner")}
         >
           <Icon name="plus" size={14} />
-          Kapitel
+          Ordner
         </button>
       </div>
       <ul className="binder-tree">
@@ -58,8 +58,8 @@ function BinderItem({ node }: { node: BinderNode }) {
   async function confirmDelete() {
     const yes = await ask(
       node.kind === "chapter"
-        ? `Kapitel "${node.title}" samt Inhalt löschen? (Szenen wandern in den Papierkorb des Projekts)`
-        : `Szene "${node.title}" löschen? (wandert in den Papierkorb des Projekts)`,
+        ? `Ordner "${node.title}" samt Inhalt löschen? (Dokumente wandern in den Papierkorb des Projekts)`
+        : `Dokument "${node.title}" löschen? (wandert in den Papierkorb des Projekts)`,
       { title: "Löschen", kind: "warning" },
     );
     if (yes) await deleteNode(node.id);
@@ -142,7 +142,11 @@ function BinderItem({ node }: { node: BinderNode }) {
         }}
         onDragLeave={() => setDropZone(null)}
         onDrop={onDrop}
-        onClick={() => {
+        onClick={(e) => {
+          // e.detail zählt die Klicks: bei 2 kommt gleich onDoubleClick (Umbenennen) —
+          // dann nicht schon per Einzelklick die Szene/den Fluss neu laden, sonst
+          // kann der Reload dem gerade geöffneten Umbenennen-Feld den Fokus rauben.
+          if (e.detail > 1) return;
           if (node.kind === "scene") void selectScene(node.id);
           else void selectChapter(node.id);
         }}
@@ -181,8 +185,8 @@ function BinderItem({ node }: { node: BinderNode }) {
               )}
               {node.kind === "chapter" && (
                 <button
-                  title="Neue Szene in diesem Kapitel"
-                  onClick={() => void createNode(node.id, "scene", "Neue Szene")}
+                  title="Neues Dokument in diesem Ordner"
+                  onClick={() => void createNode(node.id, "scene", "Dokument")}
                 >
                   <Icon name="plus" size={14} />
                 </button>
