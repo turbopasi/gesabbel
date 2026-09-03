@@ -10,6 +10,44 @@ ohne passenden Abschnitt bricht der Release-Workflow ab.
 Die Versionierung folgt der üblichen Lesart für 0.x: Die mittlere Zahl steigt
 bei neuen Funktionen, die letzte bei Fehlerbehebungen.
 
+## 0.4.0 — 2026-09-04
+
+### Neu
+
+- **Anwendungsmenü „Datei" und „Hilfe".** Eine eigene Zeile ganz oben im
+  Fenster — dort, wo unter Windows das native Menü säße, aber in der App
+  gebaut, damit es Themes und Schriften mitläuft. Unter „Datei" liegen
+  Projekt öffnen, die zuletzt geöffneten Projekte als Untermenü,
+  Sicherungspunkt, Speichern unter, Exportieren, Projekt schließen und
+  Beenden; unter „Hilfe" ein Dialog „Über Gesabbel" mit Version, Lizenz und
+  Projektadresse. Die Einträge lösen dieselben Aktionen aus wie die Knöpfe in
+  der Titelleiste.
+- **„Speichern unter".** Legt eine vollständige Kopie des Projekts an einem
+  gewählten Ort an und arbeitet ab sofort in der Kopie weiter; das Original
+  bleibt auf dem Stand, den es beim Kopieren hatte. Der interne Verlauf wandert
+  mit, der Such-Cache nicht — der baut sich in der Kopie neu auf.
+
+### Geändert
+
+- **Ordner und Dokumente statt Kapitel und Szenen.** Die Baumstruktur wird
+  längst nicht nur für Prosa genutzt; die Oberfläche spricht deshalb überall
+  von Ordnern und Dokumenten. Am Dateiformat ändert sich nichts, bestehende
+  Projekte öffnen unverändert.
+- **Statusleiste bricht nicht mehr um.** Wird der Bereich schmal, sprangen die
+  Angaben bisher ohne erkennbare Ordnung in weitere Zeilen. Jetzt stehen sie in
+  drei festen Blöcken, und es fällt der Reihe nach weg, was am ehesten
+  verzichtbar ist — zuerst die Gesamtzahlen, zuletzt die Normseiten. Wortzahl
+  und Schalter bleiben immer sichtbar; die ausgeblendeten Werte stehen
+  vollständig im Tooltip der Zahlengruppe. Maßstab ist die Breite des Bereichs,
+  nicht die des Fensters, damit es auch im geteilten Layout stimmt.
+
+### Behoben
+
+- **Umbenennen im Binder verlor den Fokus.** Der Doppelklick löste zuerst den
+  Einzelklick aus, der das Dokument neu lud — der neu aufgebaute Editor zog
+  sich den Fokus aus dem gerade geöffneten Eingabefeld. Im Fluss-Modus war das
+  besonders auffällig.
+
 ## 0.3.0 — 2026-08-31
 
 ### Neu
