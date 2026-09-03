@@ -11,10 +11,12 @@ import { TimelinePanel } from "./components/TimelinePanel";
 import { ResearchPane } from "./components/ResearchPane";
 import { ResearchSidebar } from "./components/ResearchSidebar";
 import { LayoutMenu } from "./components/LayoutMenu";
+import { MenuBar } from "./components/MenuBar";
 import { Icon } from "./components/Icon";
 import { HistoryOverlay } from "./components/HistoryPanel";
 import { ExportOverlay } from "./components/ExportDialog";
 import { SettingsOverlay } from "./components/SettingsDialog";
+import { AboutOverlay } from "./components/AboutDialog";
 import { UpdateBanner } from "./components/UpdateBanner";
 import "./App.css";
 
@@ -46,7 +48,8 @@ function App() {
     const onKey = (e: KeyboardEvent) => {
       const s = useStore.getState();
       if (e.key === "Escape") {
-        if (s.settingsOpen) s.setSettingsOpen(false);
+        if (s.aboutOpen) s.setAboutOpen(false);
+        else if (s.settingsOpen) s.setSettingsOpen(false);
         else if (s.exportOpen) s.setExportOpen(false);
         else if (s.historyFor) s.setHistoryFor(null);
         else if (s.quickNavOpen) s.setQuickNavOpen(false);
@@ -117,6 +120,7 @@ function App() {
       <HistoryOverlay />
       <ExportOverlay />
       <SettingsOverlay />
+      <AboutOverlay />
       {project ? (
         <MainView />
       ) : (
@@ -171,6 +175,7 @@ function MainView() {
 
   return (
     <div className="main-layout">
+      <MenuBar />
       <header className="titlebar">
         <span className="project-title">{project.meta.title}</span>
         <span className="muted small">{project.root}</span>

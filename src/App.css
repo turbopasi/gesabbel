@@ -2235,6 +2235,7 @@ li.chapter > .binder-row > .binder-title {
    Fokusmodus — alles Drumherum blendet weg
    -------------------------------------------------------------------------- */
 
+.app.focus-mode .menubar,
 .app.focus-mode .titlebar,
 .app.focus-mode .sidebar-slot,
 .app.focus-mode .pane-resizer,
@@ -2302,6 +2303,187 @@ li.chapter > .binder-row > .binder-title {
   background: var(--accent-soft);
   border-color: var(--accent);
   color: var(--text-strong);
+}
+
+/* --------------------------------------------------------------------------
+   Anwendungsmenue (Datei, Hilfe) — links in der Titelleiste
+   -------------------------------------------------------------------------- */
+
+/* Eigene Zeile ganz oben — dort, wo unter Windows das native Menue saesse,
+   ueber der Titel-/Werkzeugleiste und ueber die volle Breite. */
+.menubar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+  height: var(--menubar-height);
+  padding: 0 var(--space-3);
+  border-bottom: 1px solid var(--border-hairline);
+  background: var(--surface-rail);
+  position: relative;
+  z-index: 42;
+}
+
+/* Titel und Klappe muessen ueber der Fangflaeche liegen: sonst schluckt die
+   das Ueberfahren, mit dem man zwischen offenen Menues wechselt. */
+.menu {
+  position: relative;
+  z-index: 41;
+  display: inline-flex;
+}
+
+.menubar .menu-title {
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-3);
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.menubar .menu-title:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: transparent;
+  color: var(--text-strong);
+}
+
+.menubar .menu-title.on {
+  background: var(--surface-hover);
+  border-color: transparent;
+  color: var(--text-strong);
+}
+
+/* Faengt Klicks neben dem offenen Menue ab — liegt unter der Klappe. */
+.menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.menu-popover {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 41;
+  min-width: 15rem;
+  padding: var(--space-2);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-2);
+}
+
+.menu-popover hr {
+  height: 0;
+  margin: var(--space-2) var(--space-3);
+  border: 0;
+  border-top: 1px solid var(--border-hairline);
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--control-height-md);
+  padding: 0 var(--space-3);
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-muted);
+  text-align: left;
+}
+
+.menu-item:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: transparent;
+  color: var(--text-strong);
+}
+
+.menu-item:disabled {
+  color: var(--text-faint);
+}
+
+/* Feste Spalte, damit die Beschriftungen buendig stehen — auch bei Eintraegen
+   ohne Symbol ("Beenden"). */
+.menu-item-icon {
+  display: inline-flex;
+  justify-content: center;
+  width: 14px;
+  flex-shrink: 0;
+}
+
+.menu-item-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-item-hint {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  font: var(--type-mono);
+  color: var(--text-faint);
+}
+
+.menu-sub {
+  position: relative;
+  display: block;
+}
+
+/* Die Pfade der letzten Projekte sind lang: das Untermenue darf breiter werden
+   und klappt nach rechts aus. */
+.menu-popover-sub {
+  top: calc(-1 * var(--space-2));
+  left: 100%;
+  min-width: 18rem;
+  max-width: 32rem;
+}
+
+.menu-popover-sub .menu-item-label {
+  direction: rtl;
+  text-align: left;
+}
+
+/* --------------------------------------------------------------------------
+   Ueber Gesabbel
+   -------------------------------------------------------------------------- */
+
+.about-dialog {
+  width: min(28rem, 92vw);
+}
+
+.about-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  text-align: center;
+}
+
+.about-body p {
+  margin: 0;
+}
+
+.about-facts {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: var(--space-2) var(--space-5);
+  margin: var(--space-2) 0;
+  font: var(--type-mono);
+}
+
+.about-facts dt {
+  color: var(--text-faint);
+  text-align: right;
+}
+
+.about-facts dd {
+  margin: 0;
+  color: var(--text-strong);
+  text-align: left;
 }
 
 /* --------------------------------------------------------------------------

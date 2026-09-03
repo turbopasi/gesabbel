@@ -135,6 +135,8 @@ interface Store {
 
   createProject: (parentDir: string, name: string, author: string) => Promise<void>;
   openProject: (path: string) => Promise<void>;
+  /** „Speichern unter": legt eine Kopie an und arbeitet in der Kopie weiter. */
+  saveProjectAs: (parentDir: string, name: string) => Promise<void>;
   closeProject: () => Promise<void>;
   selectScene: (id: string) => Promise<void>;
   /** Zeigt das Corkboard eines Kapitels im aktiven Pane. */
@@ -206,6 +208,9 @@ interface Store {
   /** Export-Dialog (Phase 6). */
   exportOpen: boolean;
   setExportOpen: (open: boolean) => void;
+
+  aboutOpen: boolean;
+  setAboutOpen: (open: boolean) => void;
   /** Kurzes Feedback nach manuellem Sicherungspunkt (Titelleiste). */
   snapshotNotice: string | null;
   /** Sicherungspunkt über das ganze Projekt; ohne message automatisch (still). */
@@ -399,6 +404,18 @@ export const useStore = create<Store>((set, get) => {
     openProject: async (path) => {
       try {
         const project = await api.openProject(path);
+        pushRecent(project.root);
+        resetView(project);
+      } catch (e) {
+        fail(e);
+      }
+    },
+
+    saveProjectAs: async (parentDir, name) => {
+      try {
+        // Erst alles Offene rausschreiben — die Kopie entsteht von Platte.
+        await get().flushAll();
+        const project = await api.saveProjectAs(parentDir, name);
         pushRecent(project.root);
         resetView(project);
       } catch (e) {
@@ -808,6 +825,9 @@ export const useStore = create<Store>((set, get) => {
       if (open) void get().flushAll();
       set({ exportOpen: open });
     },
+
+    aboutOpen: false,
+    setAboutOpen: (open) => set({ aboutOpen: open }),
 
     snapshotNotice: null,
 

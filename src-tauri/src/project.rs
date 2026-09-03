@@ -395,6 +395,81 @@ pub fn open_project(path: String, state: tauri::State<AppState>) -> Result<Proje
     Ok(info)
 }
 
+/// Kopiert einen Ordnerbaum. `.cache/` bleibt aussen vor: reiner Wegwerf-Inhalt,
+/// der in der Kopie ohnehin neu aufgebaut wird. `.git/` wandert mit, damit die
+/// Kopie den kompletten Verlauf behaelt.
+fn copy_tree(from: &Path, to: &Path) -> Result<(), String> {
+    fs::create_dir_all(to).map_err(|e| format!("Ordner anlegen ({}): {e}", to.display()))?;
+    for entry in fs::read_dir(from).map_err(|e| format!("Lesen ({}): {e}", from.display()))? {
+        let entry = entry.map_err(|e| format!("Eintrag lesen: {e}"))?;
+        let name = entry.file_name();
+        if name == ".cache" {
+            continue;
+        }
+        let src = entry.path();
+        let dst = to.join(&name);
+        if src.is_dir() {
+            copy_tree(&src, &dst)?;
+        } else {
+            fs::copy(&src, &dst).map_err(|e| format!("Kopieren ({}): {e}", src.display()))?;
+        }
+    }
+    Ok(())
+}
+
+/// „Speichern unter": legt eine vollstaendige Kopie des offenen Projekts an und
+/// arbeitet ab sofort in der Kopie weiter — das Original bleibt auf dem Stand,
+/// den es beim Kopieren hatte. Die Oberflaeche schreibt vorher alles Offene raus.
+#[tauri::command]
+pub fn save_project_as(
+    parent_dir: String,
+    name: String,
+    state: tauri::State<AppState>,
+) -> Result<ProjectInfo, String> {
+    let safe_name: String = name
+        .chars()
+        .filter(|c| !matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|'))
+        .collect::<String>()
+        .trim()
+        .to_string();
+    if safe_name.is_empty() {
+        return Err("Projektname ist leer".into());
+    }
+    let target = Path::new(&parent_dir).join(format!("{safe_name}.autorproj"));
+    if target.exists() {
+        return Err(format!("Ordner existiert bereits: {}", target.display()));
+    }
+
+    let source = {
+        let guard = state.0.lock().map_err(|_| "State-Lock vergiftet".to_string())?;
+        guard.as_ref().ok_or("Kein Projekt geoeffnet")?.root.clone()
+    };
+    if target.starts_with(&source) {
+        return Err("Das Ziel darf nicht im Projekt selbst liegen".into());
+    }
+    copy_tree(&source, &target)?;
+
+    // Die Kopie traegt den neuen Namen als Titel; alles andere bleibt gleich.
+    let meta_path = target.join(PROJECT_FILE);
+    let raw = fs::read_to_string(&meta_path).map_err(|e| format!("project.json lesen: {e}"))?;
+    let mut meta: ProjectMeta =
+        serde_json::from_str(&raw).map_err(|e| format!("project.json ungueltig: {e}"))?;
+    meta.title = safe_name;
+
+    let mut project = OpenProject {
+        root: target,
+        meta,
+        known_mtimes: HashMap::new(),
+        search_dirty: true,
+    };
+    project.write_meta()?;
+    project.snapshot_mtimes();
+    crate::versioning::ensure_repo(&project.root, &project.meta.author, "Projekt kopiert")?;
+    let info = project.info();
+    *state.0.lock().map_err(|_| "State-Lock vergiftet")? = Some(project);
+    Ok(info)
+}
+
 #[tauri::command]
 pub fn close_project(state: tauri::State<AppState>) -> Result<(), String> {
     *state.0.lock().map_err(|_| "State-Lock vergiftet")? = None;

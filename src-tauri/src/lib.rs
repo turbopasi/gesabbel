@@ -19,6 +19,7 @@ pub fn run() {
             project::create_project,
             project::open_project,
             project::close_project,
+            project::save_project_as,
             project::read_scene,
             project::write_scene,
             project::create_node,

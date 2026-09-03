@@ -19,6 +19,8 @@ export const api = {
     invoke<ProjectInfo>("create_project", { parentDir, name, title, author }),
   openProject: (path: string) => invoke<ProjectInfo>("open_project", { path }),
   closeProject: () => invoke<void>("close_project"),
+  saveProjectAs: (parentDir: string, name: string) =>
+    invoke<ProjectInfo>("save_project_as", { parentDir, name }),
   readScene: (id: string) => invoke<string>("read_scene", { id }),
   writeScene: (id: string, content: string, force = false) =>
     invoke<WriteResult>("write_scene", { id, content, force }),
