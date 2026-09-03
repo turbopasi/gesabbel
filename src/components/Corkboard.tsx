@@ -42,12 +42,12 @@ export function Corkboard({ chapterId }: { chapterId: string }) {
     >
       <div className="corkboard-header">
         <h2>{chapter.title}</h2>
-        <button onClick={() => void createNode(chapterId, "scene", "Neue Szene")}>
-          + Szene
+        <button onClick={() => void createNode(chapterId, "scene", "Dokument")}>
+          + Dokument
         </button>
       </div>
       {chapter.children.length === 0 ? (
-        <p className="muted">Dieses Kapitel ist noch leer.</p>
+        <p className="muted">Dieser Ordner ist noch leer.</p>
       ) : (
         <div className="cards">
           {chapter.children.map((child) => (

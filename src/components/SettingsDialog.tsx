@@ -367,7 +367,7 @@ function LayoutTab() {
           checked={lay.binderVisible}
           onChange={(e) => patch({ binderVisible: e.target.checked })}
         />
-        <span>Binder (Kapitel-/Szenenliste) anzeigen</span>
+        <span>Binder (Ordner-/Dokumentenliste) anzeigen</span>
       </label>
       <label className="settings-row">
         <span>Binder-Position</span>

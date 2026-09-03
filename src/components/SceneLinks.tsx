@@ -20,7 +20,7 @@ export function SceneLinks({
 
   return (
     <div className="scene-links">
-      <span className="small muted">Verknüpfte Szenen:</span>
+      <span className="small muted">Verknüpfte Dokumente:</span>
       <div className="chips">
         {sceneIds.map((id) => {
           const node = findNode(binder, id);
@@ -28,7 +28,7 @@ export function SceneLinks({
             <span key={id} className="chip">
               <button
                 className="chip-label"
-                title="Szene öffnen"
+                title="Dokument öffnen"
                 onClick={() => void selectScene(id)}
               >
                 {node?.title ?? id}
@@ -50,7 +50,7 @@ export function SceneLinks({
               if (e.target.value) onChange([...sceneIds, e.target.value]);
             }}
           >
-            <option value="">+ Szene verknüpfen …</option>
+            <option value="">+ Dokument verknüpfen …</option>
             {available.map(({ node, path }) => (
               <option key={node.id} value={node.id}>
                 {path.length > 0 ? `${path.join(" › ")} › ` : ""}

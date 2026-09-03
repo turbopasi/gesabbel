@@ -14,7 +14,7 @@ export const SCENE_BREAK_NODE = "sceneBreak";
 
 function sceneTitle(id: string): string {
   const binder = useStore.getState().project?.meta.binder ?? [];
-  return findNode(binder, id)?.title ?? "Szene";
+  return findNode(binder, id)?.title ?? "Dokument";
 }
 
 export const SceneBreak = Node.create({

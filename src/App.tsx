@@ -371,7 +371,7 @@ function ConflictBanner({ paneId }: { paneId: PaneId }) {
   return (
     <div className="banner warning">
       <span>
-        Diese Szene{where} wurde außerhalb der App verändert (z. B. durch Sync). Wie möchtest
+        Dieses Dokument{where} wurde außerhalb der App verändert (z. B. durch Sync). Wie möchtest
         du fortfahren?
       </span>
       <button onClick={() => void resolveConflict(paneId, "reload")}>

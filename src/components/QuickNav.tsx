@@ -120,7 +120,7 @@ export function QuickNav() {
       <div className="quicknav" onClick={(e) => e.stopPropagation()}>
         <input
           ref={inputRef}
-          placeholder="Suchen: Szenen, Notizen, Personen, Orte, Volltext …"
+          placeholder="Suchen: Dokumente, Notizen, Personen, Orte, Volltext …"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {

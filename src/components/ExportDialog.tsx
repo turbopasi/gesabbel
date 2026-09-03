@@ -267,7 +267,7 @@ function ExportDialog() {
                   />
                 </label>
                 <label className="export-row">
-                  <span>Szenentrenner</span>
+                  <span>Dokumententrenner</span>
                   <input
                     value={tpl.sceneSeparator}
                     placeholder="leer = Leerzeile"
@@ -280,7 +280,7 @@ function ExportDialog() {
                     checked={tpl.chapterStartNewPage}
                     onChange={(e) => patchTpl({ chapterStartNewPage: e.target.checked })}
                   />
-                  Jedes Kapitel auf neuer Seite beginnen
+                  Jeder Ordner beginnt auf neuer Seite
                 </label>
                 <label className="export-check">
                   <input
@@ -288,7 +288,7 @@ function ExportDialog() {
                     checked={tpl.includeSceneTitles}
                     onChange={(e) => patchTpl({ includeSceneTitles: e.target.checked })}
                   />
-                  Szenentitel als Überschriften ausgeben
+                  Dokumententitel als Überschriften ausgeben
                 </label>
                 <div className="export-inline">
                   <button onClick={() => void saveTemplate()}>
@@ -313,7 +313,7 @@ function ExportDialog() {
                 </>
               ) : (
                 <span className="muted small">
-                  {sceneCount} {sceneCount === 1 ? "Szene" : "Szenen"} ausgewählt
+                  {sceneCount} {sceneCount === 1 ? "Dokument" : "Dokumente"} ausgewählt
                 </span>
               )}
               <span className="spacer" />

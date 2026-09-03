@@ -102,7 +102,7 @@ export function EntityDoc({
           />
           <button
             className={metaOpen ? "on" : ""}
-            title="Bild und Szenen-Verknüpfungen"
+            title="Bild und Dokumenten-Verknüpfungen"
             onClick={() => setMetaOpen(!metaOpen)}
           >
             <Icon name="info" size={14} />

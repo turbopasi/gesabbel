@@ -46,7 +46,7 @@ export function TimelinePanel() {
       {events.length === 0 && (
         <p className="muted">
           Noch keine Ereignisse. Lege chronologische Ereignisse an und verknüpfe sie mit
-          Szenen.
+          Dokumenten.
         </p>
       )}
       <ol className="timeline-list">
