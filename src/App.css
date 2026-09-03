@@ -1650,7 +1650,7 @@ li.chapter > .binder-row > .binder-title {
 .statusbar {
   display: flex;
   align-items: center;
-  gap: var(--space-6);
+  gap: var(--space-4);
   min-height: var(--statusbar-height);
   flex-shrink: 0;
   padding: var(--space-1) var(--space-6);
@@ -1658,17 +1658,47 @@ li.chapter > .binder-row > .binder-title {
   background: var(--surface-rail);
   font: var(--type-mono);
   color: var(--text-muted);
-  flex-wrap: wrap;
+  /* Nie umbrechen: schmale Bereiche lassen unten stattdessen der Reihe nach
+     die unwichtigsten Angaben weg (siehe @container-Regeln). Der Bezug ist
+     die Breite der Leiste selbst, weil zwei Bereiche nebeneinander liegen
+     können und das Fenster deshalb kein brauchbares Maß ist. */
+  flex-wrap: nowrap;
+  container: statusbar / inline-size;
 }
 
 .statusbar .spacer {
   flex: 1;
+  min-width: var(--space-4);
+}
+
+/* Zahlen links, Schalter rechts — zwei Gruppen, die als Block zusammenbleiben. */
+.statusbar .sb-stats {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.statusbar .sb-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.statusbar .save-state {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 /* Bezug der linken Zahlen, wenn ein ganzes Kapitel im Fluss offen ist. */
 .statusbar .stats-scope {
   font-weight: var(--weight-medium);
   color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Gesamtwerte des Manuskripts — abgesetzt von den Werten des Dokuments. */
@@ -1676,6 +1706,46 @@ li.chapter > .binder-row > .binder-title {
   padding-left: var(--space-6);
   border-left: 1px solid var(--border-hairline);
   color: var(--text-muted);
+}
+
+/* Wird die Leiste schmal, fällt der Reihe nach weg, was am ehesten
+   verzichtbar ist — die Wortzahl und die Schalter bleiben immer stehen.
+   Die ausgeblendeten Werte stehen weiter im Tooltip der Zahlengruppe. */
+@container statusbar (max-width: 620px) {
+  .statusbar .total-stats {
+    display: none;
+  }
+}
+
+@container statusbar (max-width: 500px) {
+  .statusbar .sb-chars {
+    display: none;
+  }
+
+  .statusbar .sb-stats {
+    gap: var(--space-4);
+  }
+}
+
+@container statusbar (max-width: 400px) {
+  .statusbar .sb-label {
+    display: none;
+  }
+
+  .statusbar .stats-scope {
+    display: none;
+  }
+}
+
+@container statusbar (max-width: 300px) {
+  .statusbar .sb-pages {
+    display: none;
+  }
+
+  /* Nur noch der Zustand, der wirklich etwas verlangt, braucht den Platz. */
+  .statusbar .save-state.saved {
+    display: none;
+  }
 }
 
 /* Ein Konflikt ist der einzige Zustand in der Leiste, der Farbe bekommt. */

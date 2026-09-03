@@ -375,6 +375,28 @@ function StatusBar({ editor, paneId }: { editor: Editor; paneId: PaneId }) {
     return (parentId && findNode(binder, parentId)?.title) || "Manuskript";
   }, [binder, sceneId]);
 
+  // Sammel-Tooltip der Zahlengruppe: hält die Werte erreichbar, die in
+  // schmalen Bereichen ausgeblendet werden (Zeichen, Gesamtzahlen).
+  const statsTitle = useMemo(() => {
+    const lines = [
+      `${stats.words.toLocaleString("de-DE")} Wörter`,
+      `${stats.charsWithSpaces.toLocaleString("de-DE")} / ` +
+        `${stats.charsWithoutSpaces.toLocaleString("de-DE")} Zeichen ` +
+        "(mit / ohne Leerzeichen)",
+      `${formatNorm(norm)} Normseiten`,
+    ];
+    if (total) {
+      lines.push(
+        `Gesamtes Manuskript: ${total.words.toLocaleString("de-DE")} Wörter · ` +
+          `${total.charsWithSpaces.toLocaleString("de-DE")} / ` +
+          `${total.charsWithoutSpaces.toLocaleString("de-DE")} Zeichen · ` +
+          `${formatNorm(totalNorm(total))} Normseiten`,
+      );
+    }
+    return lines.join("\n");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stats, norm, total, normVariant]);
+
   const saveLabel: Record<string, string> = {
     saved: "Gespeichert",
     dirty: "Ungespeichert …",
@@ -384,65 +406,60 @@ function StatusBar({ editor, paneId }: { editor: Editor; paneId: PaneId }) {
 
   return (
     <footer className="statusbar">
-      <span className={saveState === "conflict" ? "save-state conflict" : "save-state"}>
-        {saveLabel[saveState]}
-      </span>
+      <span className={`save-state ${saveState}`}>{saveLabel[saveState]}</span>
       <span className="spacer" />
-      {flowIds.length > 0 && <span className="stats-scope">{chapterTitle}</span>}
-      <span>{stats.words.toLocaleString("de-DE")} Wörter</span>
-      <span title="Zeichen inkl. Leerzeichen / ohne Leerzeichen">
-        {stats.charsWithSpaces.toLocaleString("de-DE")} /{" "}
-        {stats.charsWithoutSpaces.toLocaleString("de-DE")} Zeichen
-      </span>
-      <span>
-        {formatNorm(norm)} Normseiten{" "}
-        <select
-          value={normVariant}
-          onChange={(e) => setNormVariant(e.target.value as "1800" | "30x60")}
-          title="Normseiten-Zählweise"
-        >
-          <option value="1800">1800 Zeichen</option>
-          <option value="30x60">30 × 60</option>
-        </select>
-      </span>
-      {total && (
-        <span
-          className="total-stats"
-          title={
-            `Gesamtes Manuskript: ${total.charsWithSpaces.toLocaleString("de-DE")} / ` +
-            `${total.charsWithoutSpaces.toLocaleString("de-DE")} Zeichen ` +
-            "(mit / ohne Leerzeichen)"
-          }
-        >
-          Gesamt {total.words.toLocaleString("de-DE")} Wörter ·{" "}
-          {formatNorm(totalNorm(total))} Normseiten
+      <div className="sb-stats" title={statsTitle}>
+        {flowIds.length > 0 && <span className="stats-scope">{chapterTitle}</span>}
+        <span className="sb-words">{stats.words.toLocaleString("de-DE")} Wörter</span>
+        <span className="sb-chars" title="Zeichen inkl. Leerzeichen / ohne Leerzeichen">
+          {stats.charsWithSpaces.toLocaleString("de-DE")} /{" "}
+          {stats.charsWithoutSpaces.toLocaleString("de-DE")} Zeichen
         </span>
-      )}
-      <button
-        className={flowMode ? "on" : ""}
-        title="Fluss: alle Dokumente des Ordners am Stück bearbeiten"
-        onClick={() => void toggleFlowMode()}
-      >
-        <Icon name="book-open" size={14} />
-      </button>
-      <button
-        className={typewriter ? "on" : ""}
-        title="Typewriter-Scrolling: Cursorzeile bleibt mittig"
-        onClick={toggleTypewriter}
-      >
-        <Icon name="keyboard" size={14} />
-      </button>
-      <button
-        title={
-          historyScene
-            ? `Verlauf von "${historyTitle}": frühere Versionen ansehen und wiederherstellen`
-            : "Verlauf: frühere Versionen ansehen und wiederherstellen"
-        }
-        onClick={() => historyScene && setHistoryFor(historyScene)}
-      >
-        <Icon name="history" size={14} />
-        Verlauf
-      </button>
+        <span className="sb-pages">
+          {formatNorm(norm)} Normseiten{" "}
+          <select
+            value={normVariant}
+            onChange={(e) => setNormVariant(e.target.value as "1800" | "30x60")}
+            title="Normseiten-Zählweise"
+          >
+            <option value="1800">1800 Zeichen</option>
+            <option value="30x60">30 × 60</option>
+          </select>
+        </span>
+        {total && (
+          <span className="total-stats">
+            Gesamt {total.words.toLocaleString("de-DE")} Wörter ·{" "}
+            {formatNorm(totalNorm(total))} Normseiten
+          </span>
+        )}
+      </div>
+      <div className="sb-actions">
+        <button
+          className={flowMode ? "on" : ""}
+          title="Fluss: alle Dokumente des Ordners am Stück bearbeiten"
+          onClick={() => void toggleFlowMode()}
+        >
+          <Icon name="book-open" size={14} />
+        </button>
+        <button
+          className={typewriter ? "on" : ""}
+          title="Typewriter-Scrolling: Cursorzeile bleibt mittig"
+          onClick={toggleTypewriter}
+        >
+          <Icon name="keyboard" size={14} />
+        </button>
+        <button
+          title={
+            historyScene
+              ? `Verlauf von "${historyTitle}": frühere Versionen ansehen und wiederherstellen`
+              : "Verlauf: frühere Versionen ansehen und wiederherstellen"
+          }
+          onClick={() => historyScene && setHistoryFor(historyScene)}
+        >
+          <Icon name="history" size={14} />
+          <span className="sb-label">Verlauf</span>
+        </button>
+      </div>
     </footer>
   );
 }
