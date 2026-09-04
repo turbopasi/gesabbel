@@ -11,8 +11,11 @@ type Phase = "available" | "downloading" | "ready" | "failed";
  *  fehl — kein Netz, GitHub nicht erreichbar, noch gar kein Release —, bleibt
  *  das bewusst stumm: ein Schreibprogramm soll beim Start nicht meckern.
  *
- *  Im Entwicklungsmodus ist der Updater nicht eingebunden, dort passiert nichts. */
-export function UpdateBanner() {
+ *  Im Entwicklungsmodus ist der Updater nicht eingebunden, dort passiert nichts.
+ *
+ *  `floating` setzt den Hinweis als Karte in die obere Leiste des Startbildschirms,
+ *  neben den Einstellungsknopf; ohne die Angabe bleibt er ein Balken im Fluss. */
+export function UpdateBanner({ floating = false }: { floating?: boolean }) {
   const [update, setUpdate] = useState<Update | null>(null);
   const [phase, setPhase] = useState<Phase>("available");
   const [progress, setProgress] = useState(0);
@@ -56,11 +59,17 @@ export function UpdateBanner() {
     }
   };
 
+  const cls = (kind: string) => `banner ${kind} update-banner${floating ? " floating" : ""}`;
+
   if (phase === "downloading") {
     return (
-      <div className="banner info">
+      <div className={cls("info")}>
         <span>
-          Version {update.version} wird geladen{progress > 0 ? ` — ${progress} %` : "…"}
+          <strong>Version {update.version}</strong> wird geladen
+          {progress > 0 ? ` — ${progress} %` : "…"}
+        </span>
+        <span className="update-progress" aria-hidden="true">
+          <span style={{ width: `${progress}%` }} />
         </span>
       </div>
     );
@@ -68,31 +77,38 @@ export function UpdateBanner() {
 
   if (phase === "ready") {
     return (
-      <div className="banner info">
-        <span>Version {update.version} ist installiert. Gesabbel startet neu…</span>
+      <div className={cls("info")}>
+        <span>
+          <strong>Version {update.version}</strong> ist installiert. Gesabbel startet neu…
+        </span>
       </div>
     );
   }
 
   if (phase === "failed") {
     return (
-      <div className="banner warning">
+      <div className={cls("warning")}>
         <span>
-          Das Update auf Version {update.version} hat nicht geklappt. Du kannst es erneut
-          versuchen oder die Version später von Hand herunterladen.
+          Das Update auf <strong>Version {update.version}</strong> hat nicht geklappt. Du
+          kannst es erneut versuchen oder die Version später von Hand herunterladen.
         </span>
-        <button onClick={() => void install()}>Erneut versuchen</button>
+        <button className="primary" onClick={() => void install()}>
+          Erneut versuchen
+        </button>
         <button onClick={() => setDismissed(true)}>Später</button>
       </div>
     );
   }
 
   return (
-    <div className="banner info">
+    <div className={cls("info")}>
       <span>
-        Version {update.version} ist verfügbar (installiert: {update.currentVersion}).
+        <strong>Version {update.version}</strong> ist verfügbar (installiert:{" "}
+        {update.currentVersion}).
       </span>
-      <button onClick={() => void install()}>Jetzt aktualisieren</button>
+      <button className="primary" onClick={() => void install()}>
+        Jetzt aktualisieren
+      </button>
       <button onClick={() => setDismissed(true)}>Später</button>
     </div>
   );

@@ -385,10 +385,27 @@ button.icon-button.on {
   text-decoration: none;
 }
 
-.settings-float {
+/* Die Leiste sitzt zwischen Fenstertitel und Inhalt und ist selbst nur ein
+   Raster — nur ihre Kinder fangen Klicks. */
+.start-topbar {
   position: fixed;
   top: var(--space-5);
+  left: var(--space-5);
   right: var(--space-5);
+  z-index: 5;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-5);
+  pointer-events: none;
+}
+
+.start-topbar > * {
+  pointer-events: auto;
+}
+
+.settings-float {
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 /* --------------------------------------------------------------------------
@@ -2718,6 +2735,74 @@ li.chapter > .binder-row > .binder-title {
   background: var(--surface-card);
   border-color: var(--border-subtle);
   color: var(--text-strong);
+}
+
+/* --------------------------------------------------------------------------
+   Updatehinweis
+   -------------------------------------------------------------------------- */
+
+/* Eine neue Version ist kein Störfall, sondern ein Angebot: der Hinweis trägt
+   die Akzentfarbe des Programms statt der Systemfarbe für Meldungen. */
+.banner.update-banner.info {
+  --banner-rail: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 0 var(--accent);
+}
+
+.banner.update-banner.warning {
+  --banner-rail: var(--status-warn);
+}
+
+.banner.update-banner strong {
+  font-weight: var(--weight-semibold);
+  color: var(--text-strong);
+}
+
+.banner.update-banner button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-on);
+  font-weight: var(--weight-medium);
+}
+
+.banner.update-banner button.primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: var(--accent-on);
+}
+
+.banner.update-banner button.primary:active:not(:disabled) {
+  background: var(--accent-press);
+}
+
+/* Auf dem Startbildschirm ist der Hinweis eine Karte in der oberen Leiste und
+   nimmt nur die Breite, die er braucht — der Rest gehört dem Einstiegsbild. */
+.banner.update-banner.floating {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 44rem;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: inset 3px 0 0 0 var(--banner-rail), var(--shadow-2);
+}
+
+/* Der Ladebalken bekommt eine eigene Zeile unter dem Text. */
+.banner > span.update-progress {
+  flex: 0 0 100%;
+  min-width: 0;
+  height: 3px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklab, var(--accent) 22%, transparent);
+  overflow: hidden;
+}
+
+.update-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 120ms linear;
 }
 
 /* --------------------------------------------------------------------------

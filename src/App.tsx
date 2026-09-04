@@ -116,7 +116,7 @@ function App() {
         <ConflictBanner key={id} paneId={id} />
       ))}
       <ExternalChangesBanner />
-      <UpdateBanner />
+      {project && <UpdateBanner />}
       <QuickNav />
       <HistoryOverlay />
       <ExportOverlay />
@@ -127,14 +127,20 @@ function App() {
       ) : (
         <>
           <StartScreen />
-          <button
-            className="settings-float"
-            title="Einstellungen (Strg+,)"
-            onClick={() => useStore.getState().setSettingsOpen(true)}
-          >
-            <Icon name="settings" />
-            Einstellungen
-          </button>
+          {/* Obere Leiste des Startbildschirms: Updatehinweis links, Einstellungen
+              rechts. Beide liegen in derselben Zeile, damit der Hinweis den Knopf
+              nicht unterläuft. Die Leiste selbst lässt Klicks durch. */}
+          <div className="start-topbar">
+            <UpdateBanner floating />
+            <button
+              className="settings-float"
+              title="Einstellungen (Strg+,)"
+              onClick={() => useStore.getState().setSettingsOpen(true)}
+            >
+              <Icon name="settings" />
+              Einstellungen
+            </button>
+          </div>
         </>
       )}
     </div>
