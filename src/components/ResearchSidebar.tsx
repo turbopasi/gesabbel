@@ -4,6 +4,7 @@ import { api } from "../api";
 import { PANE_IDS, useStore, type PaneResearchKind } from "../store";
 import { RESEARCH_KIND_LABELS } from "./ResearchPane";
 import type { EntityKind } from "../types";
+import { ContextMenu, useContextMenu, type ContextMenuItem } from "./ContextMenu";
 import { Icon, type IconName } from "./Icon";
 
 const KIND_ICON: Record<PaneResearchKind, IconName> = {
@@ -173,25 +174,50 @@ function ResearchItem({ kind, id, name }: { kind: PaneResearchKind; id: string; 
   const touchResearch = useStore((s) => s.touchResearch);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(name);
+  const { menu, open: openMenu, close: closeMenu } = useContextMenu();
 
   const open = () => {
     const s = useStore.getState();
     void s.openResearchInPane(s.activePane, kind, id);
   };
 
-  // Notizen werden hier umbenannt (das Detail hat kein Titelfeld).
+  function startRename() {
+    setDraft(name);
+    setEditing(true);
+  }
+
+  // Umbenannt wird hier in der Liste — bei Notizen mangels Titelfeld im Detail,
+  // bei Personen und Orten als kurzer Weg neben dem Namensfeld des Eintrags.
   function commitRename() {
     setEditing(false);
     const title = draft.trim();
-    if (kind === "notes" && title && title !== name) {
-      void api
-        .renameNote(id, title)
-        .then(() => touchResearch())
-        .catch((e) => useStore.setState({ error: String(e) }));
-    } else {
+    if (!title || title === name) {
       setDraft(name);
+      return;
     }
+    const renamed: Promise<unknown> =
+      kind === "notes"
+        ? api.renameNote(id, title)
+        : api.updateEntityMeta(kind as EntityKind, id, { name: title });
+    void renamed
+      .then(() => touchResearch())
+      .catch((e) => useStore.setState({ error: String(e) }));
   }
+
+  function duplicate() {
+    const copied: Promise<unknown> =
+      kind === "notes" ? api.duplicateNote(id) : api.duplicateEntity(kind as EntityKind, id);
+    void copied
+      .then(() => touchResearch())
+      .catch((e) => useStore.setState({ error: String(e) }));
+  }
+
+  const menuItems = (): ContextMenuItem[] => [
+    { label: "Umbenennen", icon: "pencil", onSelect: startRename },
+    { label: "Duplizieren", icon: "copy", onSelect: duplicate },
+    { kind: "separator" },
+    { label: "Löschen", icon: "trash-2", danger: true, onSelect: () => void confirmDelete() },
+  ];
 
   async function confirmDelete() {
     const label = RESEARCH_KIND_LABELS[kind].singular;
@@ -218,14 +244,10 @@ function ResearchItem({ kind, id, name }: { kind: PaneResearchKind; id: string; 
 
   return (
     <li
-      className={isOpen ? "open" : ""}
+      className={`${isOpen ? "open" : ""} ${menu ? "menu-open" : ""}`}
       onClick={open}
-      onDoubleClick={() => {
-        if (kind === "notes") {
-          setDraft(name);
-          setEditing(true);
-        }
-      }}
+      onDoubleClick={startRename}
+      onContextMenu={(e) => !editing && openMenu(e, menuItems())}
     >
       {editing ? (
         <input
@@ -260,6 +282,7 @@ function ResearchItem({ kind, id, name }: { kind: PaneResearchKind; id: string; 
           </button>
         </>
       )}
+      {menu && <ContextMenu {...menu} onClose={closeMenu} />}
     </li>
   );
 }

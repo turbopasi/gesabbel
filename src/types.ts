@@ -131,3 +131,13 @@ export const COLOR_PRESETS = [
   "#4a6da7",
   "#8e5aa7",
 ];
+
+/** Namen der Farbcodes — für Menüs, wo ein Punkt allein zu wenig sagt. */
+export const COLOR_LABEL: Record<string, string> = {
+  "#c0392b": "Rot",
+  "#e67e22": "Orange",
+  "#e6b33f": "Gelb",
+  "#27ae60": "Grün",
+  "#4a6da7": "Blau",
+  "#8e5aa7": "Violett",
+};

@@ -217,6 +217,43 @@ fn remove_node(nodes: &mut Vec<BinderNode>, id: &str) -> Option<BinderNode> {
     None
 }
 
+/// Klont einen Teilbaum mit frischen IDs. `scene_copies` sammelt die Paare
+/// (alte, neue Szenen-ID), damit der Aufrufer die Dateien mitkopieren kann.
+fn clone_subtree(node: &BinderNode, scene_copies: &mut Vec<(String, String)>) -> BinderNode {
+    let mut clone = node.clone();
+    clone.id = make_id(&node.title);
+    if node.kind == NodeKind::Scene {
+        scene_copies.push((node.id.clone(), clone.id.clone()));
+    }
+    clone.children = node
+        .children
+        .iter()
+        .map(|c| clone_subtree(c, scene_copies))
+        .collect();
+    clone
+}
+
+/// Hängt `node` direkt hinter das Geschwisterkind `after_id`. Wird `after_id`
+/// nicht gefunden, kommt der Node unverbraucht zurück (`Err`).
+fn insert_after(
+    nodes: &mut Vec<BinderNode>,
+    after_id: &str,
+    node: BinderNode,
+) -> Result<(), BinderNode> {
+    if let Some(pos) = nodes.iter().position(|n| n.id == after_id) {
+        nodes.insert(pos + 1, node);
+        return Ok(());
+    }
+    let mut node = node;
+    for n in nodes.iter_mut() {
+        match insert_after(&mut n.children, after_id, node) {
+            Ok(()) => return Ok(()),
+            Err(back) => node = back,
+        }
+    }
+    Err(node)
+}
+
 pub(crate) fn collect_scene_ids(node: &BinderNode, out: &mut Vec<String>) {
     if node.kind == NodeKind::Scene {
         out.push(node.id.clone());
@@ -637,6 +674,42 @@ pub fn update_node_meta(
             node.tags = t;
         }
         p.write_meta()?;
+        Ok(p.info())
+    })
+}
+
+/// Dupliziert einen Node samt Unterbaum. Die Kopie landet direkt hinter dem
+/// Original; alle Szenendateien werden unter den neuen IDs mitkopiert.
+#[tauri::command]
+pub fn duplicate_node(id: String, state: tauri::State<AppState>) -> Result<ProjectInfo, String> {
+    validate_id(&id)?;
+    with_project(&state, |p| {
+        // Erst klonen, dann den Lesezugriff auf den Baum wieder freigeben.
+        let (clone, scene_copies) = {
+            let source =
+                find_node(&p.meta.binder, &id).ok_or(format!("Node nicht gefunden: {id}"))?;
+            let mut scene_copies = Vec::new();
+            let mut clone = clone_subtree(source, &mut scene_copies);
+            clone.title = format!("{} (Kopie)", source.title);
+            (clone, scene_copies)
+        };
+
+        for (old_id, new_id) in &scene_copies {
+            let rel = scene_rel_path(new_id);
+            let src = p.abs(&scene_rel_path(old_id));
+            if src.exists() {
+                fs::copy(&src, p.abs(&rel))
+                    .map_err(|e| format!("Szene kopieren ({old_id}): {e}"))?;
+            } else {
+                fs::write(p.abs(&rel), "").map_err(|e| format!("Szenendatei anlegen: {e}"))?;
+            }
+            p.note_mtime(&rel);
+        }
+
+        insert_after(&mut p.meta.binder, &id, clone)
+            .map_err(|_| format!("Node nicht gefunden: {id}"))?;
+        p.write_meta()?;
+        p.search_dirty = true;
         Ok(p.info())
     })
 }

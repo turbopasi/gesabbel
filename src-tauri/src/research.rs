@@ -111,6 +111,50 @@ pub fn save_entity(
     })
 }
 
+/// Dupliziert einen Eintrag samt Freitext-Dokument und Bild.
+#[tauri::command]
+pub fn duplicate_entity(
+    kind: String,
+    id: String,
+    state: tauri::State<AppState>,
+) -> Result<Entity, String> {
+    let dir = entity_dir(&kind)?;
+    validate_id_pub(&id)?;
+    with_project(&state, |p| {
+        let rel = entity_rel_path(dir, &id);
+        let raw = fs::read_to_string(p.abs(&rel)).map_err(|e| format!("{rel} lesen: {e}"))?;
+        let mut entity: Entity =
+            serde_json::from_str(&raw).map_err(|e| format!("{rel} ungültig: {e}"))?;
+        entity.name = format!("{} (Kopie)", entity.name);
+        entity.id = make_id(&entity.name);
+
+        // Der Bilddateiname trägt die ID — also unter neuem Namen mitkopieren.
+        if let Some(image) = entity.image.clone() {
+            let ext = image.rsplit('.').next().unwrap_or("png");
+            let copy_name = format!("{}-img.{ext}", entity.id);
+            entity.image = fs::copy(p.abs(dir).join(&image), p.abs(dir).join(&copy_name))
+                .ok()
+                .map(|_| copy_name);
+        }
+
+        let new_rel = entity_rel_path(dir, &entity.id);
+        let json =
+            serde_json::to_string_pretty(&entity).map_err(|e| format!("Serialisierung: {e}"))?;
+        fs::write(p.abs(&new_rel), json).map_err(|e| format!("{new_rel} schreiben: {e}"))?;
+        p.note_mtime(&new_rel);
+
+        let doc_src = p.abs(&entity_doc_rel(dir, &id));
+        if doc_src.exists() {
+            let doc_rel = entity_doc_rel(dir, &entity.id);
+            fs::copy(&doc_src, p.abs(&doc_rel))
+                .map_err(|e| format!("{doc_rel} schreiben: {e}"))?;
+            p.note_mtime(&doc_rel);
+        }
+        p.search_dirty = true;
+        Ok(entity)
+    })
+}
+
 #[tauri::command]
 pub fn delete_entity(
     kind: String,
@@ -394,6 +438,33 @@ pub fn rename_note(
             .find(|n| n.id == id)
             .ok_or(format!("Notiz nicht gefunden: {id}"))?;
         note.title = title;
+        save_note_index(p, &notes)?;
+        Ok(notes)
+    })
+}
+
+/// Dupliziert eine Notiz samt Inhalt; die Kopie steht direkt hinter dem Original.
+#[tauri::command]
+pub fn duplicate_note(id: String, state: tauri::State<AppState>) -> Result<Vec<NoteInfo>, String> {
+    validate_id_pub(&id)?;
+    with_project(&state, |p| {
+        let mut notes = list_note_infos(p);
+        let pos = notes
+            .iter()
+            .position(|n| n.id == id)
+            .ok_or(format!("Notiz nicht gefunden: {id}"))?;
+        let title = format!("{} (Kopie)", notes[pos].title);
+        let new_id = make_id(&title);
+        fs::create_dir_all(p.abs("notes")).map_err(|e| format!("notes anlegen: {e}"))?;
+        let rel = note_rel_path(&new_id);
+        let src = p.abs(&note_rel_path(&id));
+        if src.exists() {
+            fs::copy(&src, p.abs(&rel)).map_err(|e| format!("Notiz kopieren: {e}"))?;
+        } else {
+            fs::write(p.abs(&rel), "").map_err(|e| format!("Notiz anlegen: {e}"))?;
+        }
+        p.note_mtime(&rel);
+        notes.insert(pos + 1, NoteInfo { id: new_id, title });
         save_note_index(p, &notes)?;
         Ok(notes)
     })

@@ -649,7 +649,9 @@ li.chapter > .binder-row > .binder-title {
   color: var(--text-strong);
 }
 
-.binder-row:hover {
+.binder-row:hover,
+/* Zeigt waehrend des Rechtsklick-Menues, worauf es sich bezieht. */
+.binder-row.menu-open {
   background: var(--surface-hover);
 }
 
@@ -782,7 +784,8 @@ li.chapter > .binder-row > .binder-title {
   transition: var(--transition-control);
 }
 
-.research-group-list li:hover {
+.research-group-list li:hover,
+.research-group-list li.menu-open {
   background: var(--surface-hover);
 }
 
@@ -2444,6 +2447,39 @@ li.chapter > .binder-row > .binder-title {
 .menu-popover-sub .menu-item-label {
   direction: rtl;
   text-align: left;
+}
+
+/* --------------------------------------------------------------------------
+   Rechtsklick-Menue — erbt Optik und Klassen des Anwendungsmenues, steht aber
+   frei am Mauszeiger statt unter einem Knopf.
+   -------------------------------------------------------------------------- */
+
+/* Ueber allem, was sonst schwebt (Menueleiste liegt bei 40/41/42). */
+.context-menu {
+  position: fixed;
+  z-index: 61;
+  min-width: 12rem;
+}
+
+/* Untermenues (Status, Farbe) sind kurze Listen — die Breite des Anwendungs-
+   menues (fuer lange Projektpfade gedacht) waere hier zu viel. */
+.context-menu .menu-popover-sub {
+  min-width: 10rem;
+  max-width: none;
+}
+
+.context-menu .menu-popover-sub .menu-item-label {
+  direction: ltr;
+}
+
+.menu-item.danger:hover:not(:disabled) {
+  color: var(--status-danger);
+}
+
+/* Farb- und Statuspunkte stehen in der Symbolspalte — dort mittig. */
+.menu-item-icon .color-dot,
+.menu-item-icon .status-dot {
+  margin: 0;
 }
 
 /* --------------------------------------------------------------------------

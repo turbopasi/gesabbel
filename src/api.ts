@@ -42,12 +42,17 @@ export const api = {
       image?: string;
     },
   ) => invoke<ProjectInfo>("update_node_meta", { id, ...patch }),
+  /** Kopie samt Unterbaum und Szenendateien, direkt hinter dem Original. */
+  duplicateNode: (id: string) => invoke<ProjectInfo>("duplicate_node", { id }),
   deleteNode: (id: string) => invoke<ProjectInfo>("delete_node", { id }),
   checkExternalChanges: () => invoke<string[]>("check_external_changes"),
 
   listEntities: (kind: EntityKind) => invoke<Entity[]>("list_entities", { kind }),
   saveEntity: (kind: EntityKind, entity: Entity) =>
     invoke<Entity>("save_entity", { kind, entity }),
+  /** Kopie samt Freitext-Dokument und Bild. */
+  duplicateEntity: (kind: EntityKind, id: string) =>
+    invoke<Entity>("duplicate_entity", { kind, id }),
   deleteEntity: (kind: EntityKind, id: string) =>
     invoke<void>("delete_entity", { kind, id }),
   setEntityImage: (kind: EntityKind, id: string, sourcePath: string) =>
@@ -79,6 +84,7 @@ export const api = {
   createNote: (title: string) => invoke<NoteInfo[]>("create_note", { title }),
   renameNote: (id: string, title: string) =>
     invoke<NoteInfo[]>("rename_note", { id, title }),
+  duplicateNote: (id: string) => invoke<NoteInfo[]>("duplicate_note", { id }),
   deleteNote: (id: string) => invoke<NoteInfo[]>("delete_note", { id }),
   readNote: (id: string) => invoke<string>("read_note", { id }),
   writeNote: (id: string, content: string, force = false) =>

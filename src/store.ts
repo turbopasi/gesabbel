@@ -196,6 +196,8 @@ interface Store {
   refreshSceneStats: () => Promise<void>;
   createNode: (parentId: string | null, kind: NodeKind, title: string) => Promise<void>;
   renameNode: (id: string, title: string) => Promise<void>;
+  /** Legt eine Kopie samt Unterbaum direkt hinter dem Original ab. */
+  duplicateNode: (id: string) => Promise<void>;
   moveNode: (id: string, newParentId: string | null, index: number) => Promise<void>;
   deleteNode: (id: string) => Promise<void>;
   checkExternalChanges: () => Promise<void>;
@@ -743,6 +745,17 @@ export const useStore = create<Store>((set, get) => {
     renameNode: async (id, title) => {
       try {
         set({ project: await api.renameNode(id, title) });
+      } catch (e) {
+        fail(e);
+      }
+    },
+
+    duplicateNode: async (id) => {
+      try {
+        set({ project: await api.duplicateNode(id) });
+        // Die Kopie bringt Text mit — anders als eine frisch angelegte Szene.
+        await get().refreshSceneStats();
+        await resyncFlows();
       } catch (e) {
         fail(e);
       }

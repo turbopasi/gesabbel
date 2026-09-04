@@ -2,7 +2,14 @@ import { useState, type DragEvent } from "react";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { PANE_IDS, useStore } from "../store";
 import { findParentAndIndex, isDescendant } from "../tree";
-import { STATUS_LABEL, type BinderNode, type NodeStatus } from "../types";
+import {
+  COLOR_LABEL,
+  COLOR_PRESETS,
+  STATUS_LABEL,
+  type BinderNode,
+  type NodeStatus,
+} from "../types";
+import { ContextMenu, useContextMenu, type ContextMenuItem } from "./ContextMenu";
 import { Icon } from "./Icon";
 
 /** ID des gerade gezogenen Nodes (modulweit, DnD läuft nie parallel). */
@@ -39,8 +46,16 @@ export function Binder() {
 }
 
 function BinderItem({ node }: { node: BinderNode }) {
-  const { selectScene, selectChapter, createNode, renameNode, deleteNode, moveNode } =
-    useStore();
+  const {
+    selectScene,
+    selectChapter,
+    createNode,
+    renameNode,
+    duplicateNode,
+    deleteNode,
+    moveNode,
+    updateNodeMeta,
+  } = useStore();
   const isOpen = useStore((s) =>
     PANE_IDS.some(
       (p) => s.panes[p].sceneId === node.id || s.panes[p].corkboardId === node.id,
@@ -54,6 +69,70 @@ function BinderItem({ node }: { node: BinderNode }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(node.title);
   const [dropZone, setDropZone] = useState<DropZone>(null);
+  const { menu, open: openMenu, close: closeMenu } = useContextMenu();
+
+  function startRename() {
+    setDraft(node.title);
+    setEditing(true);
+  }
+
+  /** Einträge des Rechtsklick-Menüs — Status und Farbe nur für Dokumente,
+   *  passend zu den Karteikarten des Corkboards. */
+  function menuItems(): ContextMenuItem[] {
+    const items: ContextMenuItem[] = [];
+    if (node.kind === "chapter") {
+      items.push({
+        label: "Neues Dokument",
+        icon: "plus",
+        onSelect: () => void createNode(node.id, "scene", "Dokument"),
+      });
+    }
+    items.push(
+      { label: "Umbenennen", icon: "pencil", onSelect: startRename },
+      { label: "Duplizieren", icon: "copy", onSelect: () => void duplicateNode(node.id) },
+    );
+    if (node.kind === "scene") {
+      const status = node.status ?? "draft";
+      items.push(
+        { kind: "separator" },
+        {
+          kind: "submenu",
+          label: "Status",
+          mark: <span className={`status-dot ${STATUS_CLASS[status]}`} />,
+          items: (Object.keys(STATUS_LABEL) as NodeStatus[]).map((s) => ({
+            label: STATUS_LABEL[s],
+            mark: <span className={`status-dot ${STATUS_CLASS[s]}`} />,
+            checked: s === status,
+            onSelect: () => void updateNodeMeta(node.id, { status: s }),
+          })),
+        },
+        {
+          kind: "submenu",
+          label: "Farbe",
+          icon: "palette",
+          items: [
+            ...COLOR_PRESETS.map((c) => ({
+              label: COLOR_LABEL[c] ?? c,
+              mark: <span className="color-dot" style={{ background: c }} />,
+              checked: node.color === c,
+              onSelect: () => void updateNodeMeta(node.id, { color: c }),
+            })),
+            {
+              label: "Keine Farbe",
+              icon: "x" as const,
+              checked: !node.color,
+              onSelect: () => void updateNodeMeta(node.id, { color: "" }),
+            },
+          ],
+        },
+      );
+    }
+    items.push(
+      { kind: "separator" },
+      { label: "Löschen", icon: "trash-2", danger: true, onSelect: () => void confirmDelete() },
+    );
+    return items;
+  }
 
   async function confirmDelete() {
     const yes = await ask(
@@ -123,7 +202,7 @@ function BinderItem({ node }: { node: BinderNode }) {
       <div
         className={`binder-row ${isOpen ? "active" : ""} ${inFlow ? "in-flow" : ""} ${
           dropZone ? `drop-${dropZone}` : ""
-        }`}
+        } ${menu ? "menu-open" : ""}`}
         draggable={!editing}
         onDragStart={(e) => {
           draggedId = node.id;
@@ -150,10 +229,10 @@ function BinderItem({ node }: { node: BinderNode }) {
           if (node.kind === "scene") void selectScene(node.id);
           else void selectChapter(node.id);
         }}
-        onDoubleClick={() => {
-          setDraft(node.title);
-          setEditing(true);
-        }}
+        onDoubleClick={startRename}
+        // Beim Umbenennen gehört der Rechtsklick dem Textfeld (Ausschneiden,
+        // Einfügen …), nicht dem Node.
+        onContextMenu={(e) => !editing && openMenu(e, menuItems())}
       >
         {editing ? (
           <input
@@ -198,6 +277,7 @@ function BinderItem({ node }: { node: BinderNode }) {
           </>
         )}
       </div>
+      {menu && <ContextMenu {...menu} onClose={closeMenu} />}
       {node.children.length > 0 && (
         <ul>
           {node.children.map((child) => (
