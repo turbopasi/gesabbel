@@ -905,6 +905,116 @@ li.chapter > .binder-row > .binder-title {
   background: var(--status-ok);
 }
 
+/* Fusszeile des Binders: sitzt unter dem Baum, nicht darin. Die Trennlinie
+   sagt, dass hier etwas anderes anfaengt. */
+.binder-trash {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-hairline);
+  border-radius: 0;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.binder-count {
+  flex-shrink: 0;
+  min-width: 1.25rem;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  font: var(--type-small);
+  text-align: center;
+}
+
+/* --------------------------------------------------------------------------
+   Papierkorb
+   -------------------------------------------------------------------------- */
+
+.trash-panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-8);
+}
+
+.trash-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  margin-bottom: var(--space-7);
+}
+
+.trash-header h2 {
+  flex: 1;
+  margin: 0;
+  font: var(--type-title);
+}
+
+.trash-header button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.trash-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.trash-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-2);
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.trash-kind {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--text-faint);
+}
+
+.trash-kind .icon {
+  margin-right: 0;
+}
+
+.trash-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-strong);
+}
+
+/* Art und Zeitpunkt schieben die Knoepfe an den rechten Rand. */
+.trash-when {
+  flex: 1;
+  white-space: nowrap;
+}
+
+.trash-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.trash-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-3);
+  font-size: var(--text-xs);
+}
+
+.trash-actions button.danger:hover:not(:disabled) {
+  color: var(--status-danger);
+}
+
 /* --------------------------------------------------------------------------
    Korkbrett
    -------------------------------------------------------------------------- */
@@ -925,9 +1035,42 @@ li.chapter > .binder-row > .binder-title {
   margin-bottom: var(--space-7);
 }
 
+/* Der Titel nimmt den freien Platz: Zurueck-Pfeil bleibt am Titel, „Neu"
+   rutscht an den rechten Rand. */
 .corkboard-header h2 {
+  flex: 1;
+  min-width: 0;
   margin: 0;
   font: var(--type-title);
+}
+
+/* Nur da, wenn es eine Ebene darueber gibt — deshalb ein blanker Pfeil ohne
+   Beschriftung, der die Titelzeile nicht belastet. */
+.corkboard-up {
+  flex-shrink: 0;
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-2);
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.corkboard-up:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: transparent;
+  color: var(--text-strong);
+}
+
+.corkboard-up .icon {
+  margin-right: 0;
+}
+
+/* „Neu" klappt eine Auswahl auf — der Pfeil sagt das an. */
+.corkboard-header button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
 }
 
 .cards {
@@ -1002,78 +1145,55 @@ li.chapter > .binder-row > .binder-title {
   color: var(--text-body);
 }
 
-.card-footer {
+/* Kopf der Karte: Titel links, Status als Pille rechts. Gesetzt wird beides
+   ueber das Rechtsklick-Menue — die Karte zeigt nur. */
+.card-head {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-3);
 }
 
-.card-footer select {
+.card-head .card-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-title-input {
+  flex: 1;
+  min-width: 0;
   min-height: var(--control-height-sm);
-  font-size: var(--text-xs);
   padding: 0 var(--space-2);
-  background: transparent;
-  border-color: var(--border-hairline);
-}
-
-.card-footer button {
-  min-height: var(--control-height-sm);
-  padding: 0 var(--space-3);
-  font-size: var(--text-xs);
-  border-color: transparent;
-  background: transparent;
-  color: var(--text-muted);
-}
-
-.card-footer button:hover:not(:disabled) {
-  background: var(--surface-hover);
-  border-color: transparent;
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
   color: var(--text-strong);
 }
 
-.card-meta {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  border-top: 1px solid var(--border-hairline);
-  padding-top: var(--space-4);
-}
-
-.card-meta input {
-  min-height: var(--control-height-sm);
-  font-size: var(--text-xs);
-}
-
-.swatches {
-  display: flex;
-  gap: var(--space-3);
-}
-
-.swatch {
-  width: 18px;
-  height: 18px;
-  min-height: 18px;
+/* Die Farbe traegt die Aussage, das Wort nennt sie beim Namen. Jeder Zustand
+   setzt beides selbst — sonst greifen die Punktfarben von .status-draft & Co. */
+.status-pill {
+  flex-shrink: 0;
+  padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-pill);
-  border: 1px solid var(--border-hairline);
-  padding: 0;
+  font: var(--weight-semibold) var(--text-2xs) / var(--leading-normal) var(--font-sans);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
-.swatch:hover:not(:disabled) {
-  border-color: var(--border-strong);
+.status-pill.status-draft {
+  background: var(--surface-sunken);
+  color: var(--text-muted);
 }
 
-.swatch.on {
-  border-color: var(--surface-card);
-  box-shadow: 0 0 0 2px var(--accent);
+.status-pill.status-revision {
+  background: var(--status-warn-soft);
+  color: var(--status-warn);
 }
 
-.swatch.none {
-  background: transparent;
-  border: 1px dashed var(--border-strong);
-  color: var(--text-faint);
-  font-size: var(--text-2xs);
-  line-height: 1;
+.status-pill.status-done {
+  background: var(--status-ok-soft);
+  color: var(--status-ok);
 }
 
 /* --------------------------------------------------------------------------

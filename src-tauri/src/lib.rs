@@ -3,6 +3,7 @@ mod project;
 mod research;
 mod search;
 mod settings;
+mod trash;
 mod versioning;
 
 use project::AppState;
@@ -29,6 +30,11 @@ pub fn run() {
             project::duplicate_node,
             project::delete_node,
             project::check_external_changes,
+            trash::list_trash,
+            trash::count_trash,
+            trash::restore_trash,
+            trash::delete_trash_item,
+            trash::empty_trash,
             research::list_entities,
             research::save_entity,
             research::duplicate_entity,

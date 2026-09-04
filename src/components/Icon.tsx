@@ -6,6 +6,8 @@
 const PATHS = {
   "arrow-down":
     "<path d=\"M12 5v14\" /> <path d=\"m19 12-7 7-7-7\" />",
+  "arrow-left":
+    "<path d=\"m12 19-7-7 7-7\" /> <path d=\"M19 12H5\" />",
   "arrow-up":
     "<path d=\"m5 12 7-7 7 7\" /> <path d=\"M12 19V5\" />",
   "bold":

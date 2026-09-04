@@ -51,6 +51,21 @@ export interface NoteInfo {
   title: string;
 }
 
+/** Ein Eintrag im Papierkorb des Projekts. */
+export interface TrashItem {
+  key: string;
+  /** "chapter" | "scene" | "note" | "characters" | "locations" */
+  kind: string;
+  id: string;
+  title: string;
+  /** ms seit Epoch. */
+  deletedAt: number;
+  files: { name: string; target: string }[];
+  node?: BinderNode;
+  parentId?: string | null;
+  index: number;
+}
+
 export interface TimelineEvent {
   id: string;
   title: string;

@@ -83,6 +83,7 @@ export function EntityDoc({
     try {
       await api.deleteEntity(kind, entity.id);
       touchResearch();
+      useStore.getState().touchTrash();
       onDeleted();
     } catch (e) {
       useStore.setState({ error: String(e) });

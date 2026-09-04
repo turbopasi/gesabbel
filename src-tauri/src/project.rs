@@ -6,6 +6,7 @@
 //! ihrer stabilen Node-ID. Dateien werden beim Umsortieren im Binder NICHT
 //! umbenannt oder verschoben — das vermeidet Sync-Konflikte.
 
+use crate::trash;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -309,7 +310,7 @@ impl OpenProject {
         }
     }
 
-    fn info(&self) -> ProjectInfo {
+    pub(crate) fn info(&self) -> ProjectInfo {
         ProjectInfo {
             root: self.root.to_string_lossy().into_owned(),
             meta: self.meta.clone(),
@@ -714,32 +715,81 @@ pub fn duplicate_node(id: String, state: tauri::State<AppState>) -> Result<Proje
     })
 }
 
-/// Löscht einen Node; zugehörige Szenendateien wandern in `.trash/` statt
-/// endgültig gelöscht zu werden.
+/// Löscht einen Node; die Dokumenttexte wandern in `.trash/`, und der Knoten
+/// samt Unterbaum und Platz im Baum kommt in den Papierkorb-Index — sonst
+/// ließe sich später nur die Datei zurückholen, nicht der Eintrag.
 #[tauri::command]
 pub fn delete_node(id: String, state: tauri::State<AppState>) -> Result<ProjectInfo, String> {
     with_project(&state, |p| {
+        let (parent_id, index) = parent_and_index(&p.meta.binder, &id)
+            .ok_or(format!("Node nicht gefunden: {id}"))?;
         let node =
             remove_node(&mut p.meta.binder, &id).ok_or(format!("Node nicht gefunden: {id}"))?;
         let mut scene_ids = Vec::new();
         collect_scene_ids(&node, &mut scene_ids);
-        if !scene_ids.is_empty() {
-            let trash = p.root.join(".trash");
-            fs::create_dir_all(&trash).map_err(|e| format!(".trash anlegen: {e}"))?;
-            let stamp = chrono::Local::now().format("%Y%m%d-%H%M%S");
-            for sid in scene_ids {
-                let rel = scene_rel_path(&sid);
-                let src = p.abs(&rel);
-                if src.exists() {
-                    fs::rename(&src, trash.join(format!("{stamp}-{sid}.md")))
-                        .map_err(|e| format!("In Papierkorb verschieben ({sid}): {e}"))?;
-                }
-                p.known_mtimes.remove(&rel);
+        let mut files = Vec::new();
+        for sid in scene_ids {
+            if let Some(f) = trash::move_to_trash(p, &scene_rel_path(&sid))? {
+                files.push(f);
             }
         }
+        trash::record(
+            p,
+            trash::TrashItem {
+                key: trash::new_key(),
+                kind: match node.kind {
+                    NodeKind::Chapter => "chapter".into(),
+                    NodeKind::Scene => "scene".into(),
+                },
+                id: node.id.clone(),
+                title: node.title.clone(),
+                deleted_at: trash::now_ms(),
+                files,
+                node: Some(node),
+                parent_id,
+                index,
+            },
+        )?;
         p.write_meta()?;
         Ok(p.info())
     })
+}
+
+/// Elternordner und Platz eines Knotens — der Papierkorb merkt sich beides,
+/// damit Wiederherstellen den Eintrag dorthin zurücklegt, wo er stand.
+fn parent_and_index(
+    nodes: &[BinderNode],
+    id: &str,
+) -> Option<(Option<String>, usize)> {
+    if let Some(i) = nodes.iter().position(|n| n.id == id) {
+        return Some((None, i));
+    }
+    for n in nodes {
+        if let Some(i) = n.children.iter().position(|c| c.id == id) {
+            return Some((Some(n.id.clone()), i));
+        }
+        if let Some(found) = parent_and_index(&n.children, id) {
+            return Some(found);
+        }
+    }
+    None
+}
+
+/// Legt einen Knoten aus dem Papierkorb zurück. Fehlt der ursprüngliche
+/// Ordner, kommt er auf die oberste Ebene — lieber am falschen Platz als gar
+/// nicht zurück.
+pub(crate) fn restore_binder_node(
+    p: &mut OpenProject,
+    node: BinderNode,
+    parent_id: Option<&str>,
+    index: usize,
+) -> Result<(), String> {
+    let siblings = match parent_id.and_then(|pid| find_node_mut(&mut p.meta.binder, pid)) {
+        Some(parent) => &mut parent.children,
+        None => &mut p.meta.binder,
+    };
+    siblings.insert(index.min(siblings.len()), node);
+    p.write_meta()
 }
 
 // ---------------------------------------------------------------------------

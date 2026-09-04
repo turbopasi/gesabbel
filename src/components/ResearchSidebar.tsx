@@ -237,6 +237,7 @@ function ResearchItem({ kind, id, name }: { kind: PaneResearchKind; id: string; 
         }
       }
       touchResearch();
+      s.touchTrash();
     } catch (e) {
       useStore.setState({ error: String(e) });
     }

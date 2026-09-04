@@ -3,14 +3,22 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { api } from "../api";
 import { useStore } from "../store";
 import { findNode, findParentAndIndex } from "../tree";
+import {
+  ContextMenu,
+  openBelow,
+  useContextMenu,
+  type ContextMenuItem,
+} from "./ContextMenu";
+import {
+  StatusPill,
+  colorMenuItem,
+  confirmDeleteNode,
+  statusMenuItem,
+  statusOf,
+} from "./NodeActions";
 import { saveClipboardImage, useDocImage } from "./DocImage";
 import { Icon } from "./Icon";
-import {
-  COLOR_PRESETS,
-  STATUS_LABEL,
-  type BinderNode,
-  type NodeStatus,
-} from "../types";
+import type { BinderNode } from "../types";
 
 /** ID der gerade gezogenen Karte (modulweit, DnD läuft nie parallel). */
 let draggedCardId: string | null = null;
@@ -21,8 +29,30 @@ export function Corkboard({ chapterId }: { chapterId: string }) {
   );
   const createNode = useStore((s) => s.createNode);
   const moveNode = useStore((s) => s.moveNode);
+  const selectChapter = useStore((s) => s.selectChapter);
+  // Der Ordner, in dem dieser hier liegt — nur dann führt ein Weg nach oben.
+  const parent = useStore((s) => {
+    if (!s.project) return null;
+    const pos = findParentAndIndex(s.project.meta.binder, chapterId);
+    return pos?.parentId ? findNode(s.project.meta.binder, pos.parentId) : null;
+  });
+  const { menu, openAt, close: closeMenu } = useContextMenu();
 
   if (!chapter) return null;
+
+  /** Der Ordner nimmt beides auf — die Karte entscheidet erst der Inhalt. */
+  const newItems: ContextMenuItem[] = [
+    {
+      label: "Neues Dokument",
+      icon: "file-text",
+      onSelect: () => void createNode(chapterId, "scene", "Dokument"),
+    },
+    {
+      label: "Neuer Ordner",
+      icon: "folder",
+      onSelect: () => void createNode(chapterId, "chapter", "Ordner"),
+    },
+  ];
 
   function onBoardDrop(e: DragEvent) {
     // Drop auf freie Fläche: ans Ende anhängen.
@@ -41,11 +71,27 @@ export function Corkboard({ chapterId }: { chapterId: string }) {
       onDrop={onBoardDrop}
     >
       <div className="corkboard-header">
+        {parent && (
+          <button
+            className="corkboard-up"
+            title={`Zurück zu „${parent.title}"`}
+            onClick={() => void selectChapter(parent.id)}
+          >
+            <Icon name="arrow-left" size={16} />
+          </button>
+        )}
         <h2>{chapter.title}</h2>
-        <button onClick={() => void createNode(chapterId, "scene", "Dokument")}>
-          + Dokument
+        <button
+          aria-haspopup="menu"
+          title="Neues Dokument oder neuen Ordner anlegen"
+          onClick={(e) => openBelow(e, newItems, openAt)}
+        >
+          <Icon name="plus" size={14} />
+          Neu
+          <Icon name="chevron-down" size={12} />
         </button>
       </div>
+      {menu && <ContextMenu {...menu} onClose={closeMenu} />}
       {chapter.children.length === 0 ? (
         <p className="muted">Dieser Ordner ist noch leer.</p>
       ) : (
@@ -60,12 +106,65 @@ export function Corkboard({ chapterId }: { chapterId: string }) {
 }
 
 function Card({ node, parentId }: { node: BinderNode; parentId: string }) {
-  const { selectScene, selectChapter, updateNodeMeta, moveNode } = useStore();
+  const { selectScene, selectChapter, updateNodeMeta, moveNode, renameNode, duplicateNode } =
+    useStore();
   const [synopsisDraft, setSynopsisDraft] = useState<string | null>(null);
   const [dropSide, setDropSide] = useState<"before" | "after" | null>(null);
-  const [showMeta, setShowMeta] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(node.title);
+  const { menu, open: openMenu, close: closeMenu } = useContextMenu();
 
-  const status = (node.status ?? "draft") as NodeStatus;
+  function openNode() {
+    if (node.kind === "scene") void selectScene(node.id);
+    else void selectChapter(node.id);
+  }
+
+  function startRename() {
+    setDraft(node.title);
+    setEditing(true);
+  }
+
+  function commitRename() {
+    setEditing(false);
+    const title = draft.trim();
+    if (title && title !== node.title) void renameNode(node.id, title);
+    else setDraft(node.title);
+  }
+
+  /** Alles, was die Karte kann, steht im Rechtsklick-Menü — die Karte selbst
+   *  zeigt nur noch Titel, Status, Bild und Synopsis. */
+  function menuItems(): ContextMenuItem[] {
+    return [
+      { label: "Umbenennen", icon: "pencil", onSelect: startRename },
+      { label: "Duplizieren", icon: "copy", onSelect: () => void duplicateNode(node.id) },
+      { kind: "separator" },
+      statusMenuItem(node),
+      colorMenuItem(node),
+      { kind: "separator" },
+      {
+        label: "Bild wählen …",
+        icon: "image",
+        hint: "Strg+V",
+        onSelect: () => void chooseImage(),
+      },
+      ...(node.image
+        ? [
+            {
+              label: "Bild entfernen",
+              icon: "x" as const,
+              onSelect: () => void updateNodeMeta(node.id, { image: "" }),
+            },
+          ]
+        : []),
+      { kind: "separator" },
+      {
+        label: "Löschen",
+        icon: "trash-2",
+        danger: true,
+        onSelect: () => void confirmDeleteNode(node),
+      },
+    ];
+  }
 
   function commitSynopsis() {
     if (synopsisDraft !== null && synopsisDraft !== (node.synopsis ?? "")) {
@@ -129,10 +228,10 @@ function Card({ node, parentId }: { node: BinderNode; parentId: string }) {
 
   return (
     <div
-      className={`card ${dropSide ? `drop-${dropSide}` : ""}`}
+      className={`card ${dropSide ? `drop-${dropSide}` : ""} ${menu ? "menu-open" : ""}`}
       tabIndex={0}
       onPaste={onPaste}
-      draggable={synopsisDraft === null}
+      draggable={synopsisDraft === null && !editing}
       onDragStart={(e) => {
         draggedCardId = node.id;
         e.dataTransfer.setData("text/plain", node.id);
@@ -149,18 +248,35 @@ function Card({ node, parentId }: { node: BinderNode; parentId: string }) {
       }}
       onDragLeave={() => setDropSide(null)}
       onDrop={onDrop}
+      // Auf der ganzen Karte — die Synopsis nimmt den halben Platz ein, dort
+      // erwartet niemand ein anderes Menü. Nur das Umbenennen-Feld behält das
+      // native Menü, weil dort gerade Text bearbeitet wird.
+      onContextMenu={(e) => !editing && openMenu(e, menuItems())}
       style={node.color ? { borderTopColor: node.color } : undefined}
     >
-      <div
-        className="card-title"
-        title="Doppelklick: öffnen"
-        onDoubleClick={() => {
-          if (node.kind === "scene") void selectScene(node.id);
-          else void selectChapter(node.id);
-        }}
-      >
-        {node.kind === "chapter" && <Icon name="folder" size={14} />}
-        {node.title}
+      <div className="card-head">
+        {editing ? (
+          <input
+            className="card-title-input"
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commitRename}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitRename();
+              if (e.key === "Escape") {
+                setDraft(node.title);
+                setEditing(false);
+              }
+            }}
+          />
+        ) : (
+          <div className="card-title" title="Doppelklick: öffnen" onDoubleClick={openNode}>
+            <Icon name={node.kind === "chapter" ? "folder" : "file-text"} size={14} />
+            {node.title}
+          </div>
+        )}
+        <StatusPill status={statusOf(node)} />
       </div>
 
       {node.image && <CardImage rel={node.image} />}
@@ -174,71 +290,7 @@ function Card({ node, parentId }: { node: BinderNode; parentId: string }) {
         onBlur={commitSynopsis}
       />
 
-      <div className="card-footer">
-        <select
-          value={status}
-          onChange={(e) => void updateNodeMeta(node.id, { status: e.target.value })}
-          title="Status"
-        >
-          {(Object.keys(STATUS_LABEL) as NodeStatus[]).map((s) => (
-            <option key={s} value={s}>
-              {STATUS_LABEL[s]}
-            </option>
-          ))}
-        </select>
-        <button
-          title="Kartenbild wählen … (oder Karte anklicken und Screenshot mit Strg+V einfügen)"
-          onClick={() => void chooseImage()}
-        >
-          <Icon name="image" size={14} />
-        </button>
-        <button
-          className={showMeta ? "on" : ""}
-          title="Farbe & Tags"
-          onClick={() => setShowMeta(!showMeta)}
-        >
-          <Icon name="ellipsis" size={14} />
-        </button>
-      </div>
-
-      {showMeta && (
-        <div className="card-meta">
-          <div className="swatches">
-            {COLOR_PRESETS.map((c) => (
-              <button
-                key={c}
-                className={`swatch ${node.color === c ? "on" : ""}`}
-                style={{ background: c }}
-                title={c}
-                onClick={() => void updateNodeMeta(node.id, { color: c })}
-              />
-            ))}
-            <button
-              className="swatch none"
-              title="Keine Farbe"
-              onClick={() => void updateNodeMeta(node.id, { color: "" })}
-            >
-              <Icon name="x" size={12} />
-            </button>
-          </div>
-          <input
-            placeholder="Tags (kommagetrennt)"
-            defaultValue={(node.tags ?? []).join(", ")}
-            onBlur={(e) => {
-              const tags = e.target.value
-                .split(",")
-                .map((t) => t.trim())
-                .filter(Boolean);
-              void updateNodeMeta(node.id, { tags });
-            }}
-          />
-          {node.image && (
-            <button onClick={() => void updateNodeMeta(node.id, { image: "" })}>
-              🖼 Bild entfernen
-            </button>
-          )}
-        </div>
-      )}
+      {menu && <ContextMenu {...menu} onClose={closeMenu} />}
     </div>
   );
 }

@@ -58,16 +58,34 @@ export interface ContextMenuState {
 export function useContextMenu() {
   const [menu, setMenu] = useState<ContextMenuState | null>(null);
 
-  const open = useCallback((e: ReactMouseEvent, items: ContextMenuItem[]) => {
-    e.preventDefault();
-    // Verschachtelte Zeilen (Binder-Baum): nur das innerste Element antwortet.
-    e.stopPropagation();
-    setMenu({ x: e.clientX, y: e.clientY, items });
+  /** Freie Platzierung — für Knöpfe, die ein Menü aufklappen statt zu handeln. */
+  const openAt = useCallback((x: number, y: number, items: ContextMenuItem[]) => {
+    setMenu({ x, y, items });
   }, []);
+
+  const open = useCallback(
+    (e: ReactMouseEvent, items: ContextMenuItem[]) => {
+      e.preventDefault();
+      // Verschachtelte Zeilen (Binder-Baum): nur das innerste Element antwortet.
+      e.stopPropagation();
+      openAt(e.clientX, e.clientY, items);
+    },
+    [openAt],
+  );
 
   const close = useCallback(() => setMenu(null), []);
 
-  return { menu, open, close };
+  return { menu, open, openAt, close };
+}
+
+/** Klappt ein Menü unter einem Knopf auf, linksbündig zu ihm. */
+export function openBelow(
+  e: ReactMouseEvent<HTMLElement>,
+  items: ContextMenuItem[],
+  openAt: (x: number, y: number, items: ContextMenuItem[]) => void,
+) {
+  const rect = e.currentTarget.getBoundingClientRect();
+  openAt(rect.left, rect.bottom + 4, items);
 }
 
 /** Rand zum Fenster, damit das Menü nie an der Kante klebt. */

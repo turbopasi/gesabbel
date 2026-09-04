@@ -8,6 +8,7 @@ import { RichEditor } from "./components/RichEditor";
 import { Corkboard } from "./components/Corkboard";
 import { QuickNav } from "./components/QuickNav";
 import { TimelinePanel } from "./components/TimelinePanel";
+import { TrashPanel } from "./components/TrashPanel";
 import { ResearchPane } from "./components/ResearchPane";
 import { ResearchSidebar } from "./components/ResearchSidebar";
 import { LayoutMenu } from "./components/LayoutMenu";
@@ -322,11 +323,22 @@ function SidebarResizer({
 /** Zeigt je nach Pane-Zustand Zeitstrahl, Corkboard, Recherche-Inhalt oder Editor. */
 function PaneView({ paneId }: { paneId: PaneId }) {
   const timeline = useStore((s) => s.panes[paneId].timeline);
+  const trash = useStore((s) => s.panes[paneId].trash);
   const corkboardId = useStore((s) => s.panes[paneId].corkboardId);
   const researchKind = useStore((s) => s.panes[paneId].researchKind);
   const isActive = useStore((s) => s.activePane === paneId && s.layoutMode !== "single");
   const setActivePane = useStore((s) => s.setActivePane);
 
+  if (trash) {
+    return (
+      <section
+        className={`editor ${isActive ? "pane-active" : ""}`}
+        onMouseDownCapture={() => setActivePane(paneId)}
+      >
+        <TrashPanel />
+      </section>
+    );
+  }
   if (timeline) {
     return (
       <section

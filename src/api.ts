@@ -10,6 +10,7 @@ import type {
   ProjectInfo,
   SearchHit,
   TimelineEvent,
+  TrashItem,
   VersionInfo,
   WriteResult,
 } from "./types";
@@ -46,6 +47,13 @@ export const api = {
   duplicateNode: (id: string) => invoke<ProjectInfo>("duplicate_node", { id }),
   deleteNode: (id: string) => invoke<ProjectInfo>("delete_node", { id }),
   checkExternalChanges: () => invoke<string[]>("check_external_changes"),
+
+  listTrash: () => invoke<TrashItem[]>("list_trash"),
+  countTrash: () => invoke<number>("count_trash"),
+  /** Legt den Eintrag an seinen Platz zurück; liefert das aktualisierte Projekt. */
+  restoreTrash: (key: string) => invoke<ProjectInfo>("restore_trash", { key }),
+  deleteTrashItem: (key: string) => invoke<void>("delete_trash_item", { key }),
+  emptyTrash: () => invoke<void>("empty_trash"),
 
   listEntities: (kind: EntityKind) => invoke<Entity[]>("list_entities", { kind }),
   saveEntity: (kind: EntityKind, entity: Entity) =>

@@ -7,6 +7,7 @@
 use crate::project::{
     make_id, mtime_ms, validate_id_pub, with_project, AppState, OpenProject, WriteResult,
 };
+use crate::trash;
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -164,23 +165,36 @@ pub fn delete_entity(
     let dir = entity_dir(&kind)?;
     validate_id_pub(&id)?;
     with_project(&state, |p| {
-        let trash = p.root.join(".trash");
-        fs::create_dir_all(&trash).map_err(|e| format!(".trash anlegen: {e}"))?;
-        let stamp = chrono::Local::now().format("%Y%m%d-%H%M%S");
         let rel = entity_rel_path(dir, &id);
-        let src = p.abs(&rel);
-        if src.exists() {
-            fs::rename(&src, trash.join(format!("{stamp}-{id}.json")))
-                .map_err(|e| format!("In Papierkorb verschieben: {e}"))?;
+        // Der Name steht in der JSON-Datei; ohne ihn hieße der Eintrag im
+        // Papierkorb nur noch wie seine ID.
+        let title = fs::read_to_string(p.abs(&rel))
+            .ok()
+            .and_then(|raw| serde_json::from_str::<Entity>(&raw).ok())
+            .map(|e| e.name)
+            .unwrap_or_else(|| id.clone());
+
+        let mut files = Vec::new();
+        if let Some(f) = trash::move_to_trash(p, &rel)? {
+            files.push(f);
         }
-        p.known_mtimes.remove(&rel);
-        let doc_rel = entity_doc_rel(dir, &id);
-        let doc_src = p.abs(&doc_rel);
-        if doc_src.exists() {
-            fs::rename(&doc_src, trash.join(format!("{stamp}-{id}.md")))
-                .map_err(|e| format!("In Papierkorb verschieben: {e}"))?;
+        if let Some(f) = trash::move_to_trash(p, &entity_doc_rel(dir, &id))? {
+            files.push(f);
         }
-        p.known_mtimes.remove(&doc_rel);
+        trash::record(
+            p,
+            trash::TrashItem {
+                key: trash::new_key(),
+                kind: kind.clone(),
+                id: id.clone(),
+                title,
+                deleted_at: trash::now_ms(),
+                files,
+                node: None,
+                parent_id: None,
+                index: 0,
+            },
+        )?;
         p.search_dirty = true;
         Ok(())
     })
@@ -474,21 +488,50 @@ pub fn duplicate_note(id: String, state: tauri::State<AppState>) -> Result<Vec<N
 pub fn delete_note(id: String, state: tauri::State<AppState>) -> Result<Vec<NoteInfo>, String> {
     validate_id_pub(&id)?;
     with_project(&state, |p| {
+        // Titel und Platz stehen nur im Index — vor dem Neuschreiben lesen.
+        let (title, index) = trash::note_title(p, &id).unwrap_or((id.clone(), 0));
         let mut notes = list_note_infos(p);
         notes.retain(|n| n.id != id);
-        let trash = p.root.join(".trash");
-        fs::create_dir_all(&trash).map_err(|e| format!(".trash anlegen: {e}"))?;
-        let stamp = chrono::Local::now().format("%Y%m%d-%H%M%S");
-        let rel = note_rel_path(&id);
-        let src = p.abs(&rel);
-        if src.exists() {
-            fs::rename(&src, trash.join(format!("{stamp}-{id}.md")))
-                .map_err(|e| format!("In Papierkorb verschieben: {e}"))?;
+        let mut files = Vec::new();
+        if let Some(f) = trash::move_to_trash(p, &note_rel_path(&id))? {
+            files.push(f);
         }
-        p.known_mtimes.remove(&rel);
+        trash::record(
+            p,
+            trash::TrashItem {
+                key: trash::new_key(),
+                kind: "note".into(),
+                id: id.clone(),
+                title,
+                deleted_at: trash::now_ms(),
+                files,
+                node: None,
+                parent_id: None,
+                index,
+            },
+        )?;
         save_note_index(p, &notes)?;
         Ok(notes)
     })
+}
+
+/// Hängt eine Notiz aus dem Papierkorb wieder in den Titel-Index.
+pub(crate) fn restore_note_entry(
+    p: &mut OpenProject,
+    id: &str,
+    title: &str,
+    index: usize,
+) -> Result<(), String> {
+    let mut notes = list_note_infos(p);
+    let at = index.min(notes.len());
+    notes.insert(
+        at,
+        NoteInfo {
+            id: id.to_string(),
+            title: title.to_string(),
+        },
+    );
+    save_note_index(p, &notes)
 }
 
 #[tauri::command]

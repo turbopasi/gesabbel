@@ -1,15 +1,16 @@
-import { useState, type DragEvent } from "react";
-import { ask } from "@tauri-apps/plugin-dialog";
+import { useEffect, useState, type DragEvent } from "react";
+import { api } from "../api";
 import { PANE_IDS, useStore } from "../store";
 import { findParentAndIndex, isDescendant } from "../tree";
-import {
-  COLOR_LABEL,
-  COLOR_PRESETS,
-  STATUS_LABEL,
-  type BinderNode,
-  type NodeStatus,
-} from "../types";
+import type { BinderNode } from "../types";
 import { ContextMenu, useContextMenu, type ContextMenuItem } from "./ContextMenu";
+import {
+  StatusDot,
+  colorMenuItem,
+  confirmDeleteNode,
+  statusMenuItem,
+  statusOf,
+} from "./NodeActions";
 import { Icon } from "./Icon";
 
 /** ID des gerade gezogenen Nodes (modulweit, DnD läuft nie parallel). */
@@ -41,7 +42,46 @@ export function Binder() {
           <BinderItem key={node.id} node={node} />
         ))}
       </ul>
+      <TrashRow />
     </nav>
+  );
+}
+
+/** Feste Zeile am Fuß des Binders — kein Knoten im Baum: der Papierkorb lässt
+ *  sich nicht verschieben, umbenennen oder in einen Ordner ziehen. */
+function TrashRow() {
+  const isOpen = useStore((s) => PANE_IDS.some((p) => s.panes[p].trash));
+  const trashVersion = useStore((s) => s.trashVersion);
+  const projectRoot = useStore((s) => s.project?.root);
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let alive = true;
+    void api
+      .countTrash()
+      .then((n) => alive && setCount(n))
+      .catch(() => alive && setCount(0));
+    return () => {
+      alive = false;
+    };
+  }, [trashVersion, projectRoot]);
+
+  return (
+    <div
+      className={`binder-row binder-trash ${isOpen ? "active" : ""}`}
+      title={count === 0 ? "Papierkorb (leer)" : `Papierkorb (${count})`}
+      onClick={() => {
+        const s = useStore.getState();
+        void s.setPaneTrash(s.activePane, !isOpen);
+      }}
+    >
+      <span className="binder-disclosure" />
+      <span className="binder-title">
+        <Icon name="trash-2" size={14} />
+        Papierkorb
+      </span>
+      {count > 0 && <span className="binder-count">{count}</span>}
+    </div>
   );
 }
 
@@ -52,9 +92,7 @@ function BinderItem({ node }: { node: BinderNode }) {
     createNode,
     renameNode,
     duplicateNode,
-    deleteNode,
     moveNode,
-    updateNodeMeta,
     setCollapsed,
     toggleCollapsed,
   } = useStore();
@@ -85,8 +123,10 @@ function BinderItem({ node }: { node: BinderNode }) {
     await createNode(node.id, "scene", "Dokument");
   }
 
-  /** Einträge des Rechtsklick-Menüs — Status und Farbe nur für Dokumente,
-   *  passend zu den Karteikarten des Corkboards. */
+  /** Einträge des Rechtsklick-Menüs. Die Farbe steht für Ordner wie für
+   *  Dokumente: das Corkboard setzt sie ohnehin auf jeder Karte, und ein Ordner
+   *  in einem Ordner ist dort eine Karte wie jede andere. Der Status bleibt
+   *  vorerst bei den Dokumenten — die Zeile zeigt ihn nur dort. */
   function menuItems(): ContextMenuItem[] {
     const items: ContextMenuItem[] = [];
     if (node.kind === "chapter") {
@@ -107,57 +147,19 @@ function BinderItem({ node }: { node: BinderNode }) {
       { label: "Umbenennen", icon: "pencil", onSelect: startRename },
       { label: "Duplizieren", icon: "copy", onSelect: () => void duplicateNode(node.id) },
     );
-    if (node.kind === "scene") {
-      const status = node.status ?? "draft";
-      items.push(
-        { kind: "separator" },
-        {
-          kind: "submenu",
-          label: "Status",
-          mark: <span className={`status-dot ${STATUS_CLASS[status]}`} />,
-          items: (Object.keys(STATUS_LABEL) as NodeStatus[]).map((s) => ({
-            label: STATUS_LABEL[s],
-            mark: <span className={`status-dot ${STATUS_CLASS[s]}`} />,
-            checked: s === status,
-            onSelect: () => void updateNodeMeta(node.id, { status: s }),
-          })),
-        },
-        {
-          kind: "submenu",
-          label: "Farbe",
-          icon: "palette",
-          items: [
-            ...COLOR_PRESETS.map((c) => ({
-              label: COLOR_LABEL[c] ?? c,
-              mark: <span className="color-dot" style={{ background: c }} />,
-              checked: node.color === c,
-              onSelect: () => void updateNodeMeta(node.id, { color: c }),
-            })),
-            {
-              label: "Keine Farbe",
-              icon: "x" as const,
-              checked: !node.color,
-              onSelect: () => void updateNodeMeta(node.id, { color: "" }),
-            },
-          ],
-        },
-      );
-    }
+    items.push({ kind: "separator" });
+    if (node.kind === "scene") items.push(statusMenuItem(node));
+    items.push(colorMenuItem(node));
     items.push(
       { kind: "separator" },
-      { label: "Löschen", icon: "trash-2", danger: true, onSelect: () => void confirmDelete() },
+      {
+        label: "Löschen",
+        icon: "trash-2",
+        danger: true,
+        onSelect: () => void confirmDeleteNode(node),
+      },
     );
     return items;
-  }
-
-  async function confirmDelete() {
-    const yes = await ask(
-      node.kind === "chapter"
-        ? `Ordner "${node.title}" samt Inhalt löschen? (Dokumente wandern in den Papierkorb des Projekts)`
-        : `Dokument "${node.title}" löschen? (wandert in den Papierkorb des Projekts)`,
-      { title: "Löschen", kind: "warning" },
-    );
-    if (yes) await deleteNode(node.id);
   }
 
   function commitRename() {
@@ -290,9 +292,7 @@ function BinderItem({ node }: { node: BinderNode }) {
               {node.title}
             </span>
             <span className="binder-actions" onClick={(e) => e.stopPropagation()}>
-              {node.kind === "scene" && (
-                <StatusDot status={(node.status ?? "draft") as NodeStatus} />
-              )}
+              {node.kind === "scene" && <StatusDot status={statusOf(node)} />}
               {node.kind === "chapter" && (
                 <button
                   title="Neues Dokument in diesem Ordner"
@@ -301,7 +301,7 @@ function BinderItem({ node }: { node: BinderNode }) {
                   <Icon name="plus" size={14} />
                 </button>
               )}
-              <button title="Löschen" onClick={() => void confirmDelete()}>
+              <button title="Löschen" onClick={() => void confirmDeleteNode(node)}>
                 <Icon name="trash-2" size={14} />
               </button>
             </span>
@@ -318,14 +318,4 @@ function BinderItem({ node }: { node: BinderNode }) {
       )}
     </li>
   );
-}
-
-const STATUS_CLASS: Record<NodeStatus, string> = {
-  draft: "status-draft",
-  revision: "status-revision",
-  done: "status-done",
-};
-
-function StatusDot({ status }: { status: NodeStatus }) {
-  return <span className={`status-dot ${STATUS_CLASS[status]}`} title={STATUS_LABEL[status]} />;
 }

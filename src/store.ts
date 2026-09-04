@@ -68,6 +68,8 @@ export interface Pane {
   /** Zeigt den Zeitstrahl über dem sonstigen Inhalt dieses Panes.
    *  Bewusst kein Ersatz für sceneId/corkboardId: Ausschalten kehrt zurück. */
   timeline: boolean;
+  /** Zeigt den Papierkorb — wie der Zeitstrahl eine Auflage, kein Ersatz. */
+  trash: boolean;
   /** Markdown — aktuellster Stand aus dem Editor. */
   content: string;
   saveState: SaveState;
@@ -90,6 +92,7 @@ const emptyPane = (): Pane => ({
   researchKind: null,
   researchId: null,
   timeline: false,
+  trash: false,
   content: "",
   saveState: "saved",
   loadCounter: 0,
@@ -178,6 +181,13 @@ interface Store {
   setQuickNavOpen: (open: boolean) => void;
   /** Blendet den Zeitstrahl in einem Pane ein/aus (Inhalt darunter bleibt erhalten). */
   setPaneTimeline: (paneId: PaneId, on: boolean) => Promise<void>;
+  /** Ebenso für den Papierkorb. */
+  setPaneTrash: (paneId: PaneId, on: boolean) => Promise<void>;
+  /** Zähler als Refresh-Signal für den offenen Papierkorb. */
+  trashVersion: number;
+  touchTrash: () => void;
+  /** Holt einen Eintrag aus dem Papierkorb zurück. */
+  restoreFromTrash: (key: string) => Promise<void>;
   setContent: (paneId: PaneId, content: string) => void;
   flushPane: (paneId: PaneId) => Promise<void>;
   flushAll: () => Promise<void>;
@@ -288,6 +298,7 @@ export const useStore = create<Store>((set, get) => {
       researchKind: null,
       researchId: null,
       timeline: false,
+      trash: false,
       saveState: "saved" as SaveState,
       loadCounter: pane.loadCounter + 1,
       focusCounter: pane.focusCounter + 1,
@@ -466,7 +477,7 @@ export const useStore = create<Store>((set, get) => {
       const paneId = get().activePane;
       const pane = get().panes[paneId];
       const shown = pane.flowIds.length ? pane.flowIds.includes(id) : pane.sceneId === id;
-      if (shown && !pane.corkboardId && !pane.researchKind) {
+      if (shown && !pane.corkboardId && !pane.researchKind && !pane.trash) {
         // Schon offen: nur einen darüberliegenden Zeitstrahl wegblenden und im
         // Fluss zur gewählten Szene springen (kein Neuladen, kein Undo-Verlust).
         if (pane.timeline) patchPane(paneId, { timeline: false });
@@ -481,7 +492,7 @@ export const useStore = create<Store>((set, get) => {
 
     selectChapter: async (id) => {
       const paneId = get().activePane;
-      if (get().panes[paneId].corkboardId === id) {
+      if (get().panes[paneId].corkboardId === id && !get().panes[paneId].trash) {
         if (get().panes[paneId].timeline) patchPane(paneId, { timeline: false });
         return;
       }
@@ -494,6 +505,7 @@ export const useStore = create<Store>((set, get) => {
         researchKind: null,
         researchId: null,
         timeline: false,
+        trash: false,
         content: "",
         saveState: "saved",
       });
@@ -528,6 +540,41 @@ export const useStore = create<Store>((set, get) => {
       if (on) await get().flushPane(paneId);
       patchPane(paneId, { timeline: on });
       set({ activePane: paneId });
+    },
+
+    setPaneTrash: async (paneId, on) => {
+      if (get().panes[paneId].trash === on) {
+        set({ activePane: paneId });
+        return;
+      }
+      // Einmal reicht: ein zweiter Papierkorb zeigte dasselbe doppelt.
+      if (on) {
+        const open = PANES_FOR_MODE[get().layoutMode].find((p) => get().panes[p].trash);
+        if (open) {
+          set({ activePane: open });
+          return;
+        }
+        await get().flushPane(paneId);
+      }
+      patchPane(paneId, { trash: on });
+      set({ activePane: paneId });
+    },
+
+    trashVersion: 0,
+    touchTrash: () => set((s) => ({ trashVersion: s.trashVersion + 1 })),
+
+    restoreFromTrash: async (key) => {
+      try {
+        set({ project: await api.restoreTrash(key) });
+        get().touchTrash();
+        // Der Eintrag kann eine Person, ein Ort oder eine Notiz gewesen sein.
+        get().touchResearch();
+        void get().refreshPlanIndex();
+        await get().refreshSceneStats();
+        await resyncFlows();
+      } catch (e) {
+        fail(e);
+      }
     },
 
     setContent: (paneId, content) => {
@@ -656,6 +703,7 @@ export const useStore = create<Store>((set, get) => {
         researchKind: kind,
         researchId: id,
         timeline: false,
+        trash: false,
         content: "",
         saveState: "saved",
       });
@@ -822,6 +870,7 @@ export const useStore = create<Store>((set, get) => {
             patchPane(paneId, emptyPane());
           }
         }
+        get().touchTrash();
         await resyncFlows();
       } catch (e) {
         fail(e);
