@@ -10,6 +10,35 @@ ohne passenden Abschnitt bricht der Release-Workflow ab.
 Die Versionierung folgt der üblichen Lesart für 0.x: Die mittlere Zahl steigt
 bei neuen Funktionen, die letzte bei Fehlerbehebungen.
 
+## 0.5.0 — 2026-09-04
+
+### Neu
+
+- **Rechtsklick-Menü im Binder und in der Planung.** Die Aktionen zu einem
+  Eintrag stehen jetzt dort, wo man sie sucht: am Eintrag selbst. Ordner und
+  Dokumente bieten Umbenennen, Duplizieren und Löschen, Ordner zusätzlich
+  „Neues Dokument" und Ein-/Ausklappen. Für Dokumente lassen sich Status
+  (Entwurf, Überarbeitung, Fertig) und Farbe direkt im Menü setzen — bisher
+  ging das nur über die Karteikarte im Corkboard. Personen, Orte und Notizen
+  haben dasselbe Menü mit Umbenennen, Duplizieren und Löschen. Das Menü ist so
+  gebaut, dass weitere Stellen es später ohne Umbau übernehmen können.
+- **Duplizieren.** Gab es bisher nirgends. Kopiert wird nicht nur der Eintrag,
+  sondern auch, was an Dateien daran hängt: ein Ordner samt Unterbaum und allen
+  Dokumenttexten, eine Person oder ein Ort samt Freitext und Bild, eine Notiz
+  samt Text. Die Kopie steht direkt hinter dem Original und trägt „(Kopie)" im
+  Namen.
+- **Ordner im Binder ein- und ausklappen.** Ordner mit Inhalt tragen einen
+  Klapp-Pfeil; welche Ordner zu sind, merkt sich die App je Projekt bis zum
+  nächsten Start. Ein neues Dokument im geschlossenen Ordner und alles, was per
+  Drag & Drop hineinwandert, klappt ihn von selbst auf — sonst verschwände es
+  ungesehen.
+
+### Geändert
+
+- **Personen und Orte lassen sich in der Liste umbenennen.** Der Doppelklick
+  auf eine Zeile in der Planung öffnete das Namensfeld bisher nur bei Notizen;
+  jetzt bei allen drei Arten.
+
 ## 0.4.0 — 2026-09-04
 
 ### Neu
