@@ -671,10 +671,44 @@ li.chapter > .binder-row > .binder-title {
 /* Bewusst kein Flex: nur im Inline-Fluss kürzt text-overflow lange Titel
    mit einem Auslassungszeichen statt sie hart abzuschneiden. */
 .binder-title {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Feste Spalte fuer den Klapp-Pfeil: Ordner ohne Inhalt und Dokumente lassen
+   sie leer, damit alle Titel einer Ebene buendig stehen. */
+.binder-disclosure {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  flex-shrink: 0;
+  color: var(--text-faint);
+}
+
+.binder-disclosure button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 18px;
+  min-width: 18px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: inherit;
+}
+
+.binder-disclosure button:hover:not(:disabled) {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-strong);
+}
+
+.binder-disclosure .icon {
+  margin-right: 0;
 }
 
 .binder-title .icon {

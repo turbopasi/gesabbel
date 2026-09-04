@@ -77,6 +77,7 @@ export interface Pane {
 
 const AUTOSAVE_MS = 2000;
 const RECENTS_KEY = "gesabbel.recents";
+const COLLAPSED_KEY = "gesabbel.collapsed";
 const TYPEWRITER_KEY = "gesabbel.typewriter";
 const FLOW_KEY = "gesabbel.flowMode";
 
@@ -117,6 +118,27 @@ export function loadRecents(): string[] {
 function pushRecent(path: string) {
   const recents = [path, ...loadRecents().filter((p) => p !== path)].slice(0, 8);
   localStorage.setItem(RECENTS_KEY, JSON.stringify(recents));
+}
+
+/** Zugeklappte Ordner, je Projekt gemerkt (Ansichtssache — gehört nicht in
+ *  project.json, das über Projektordner hinweg geteilt wird). */
+function loadCollapsedMap(): Record<string, string[]> {
+  try {
+    return JSON.parse(localStorage.getItem(COLLAPSED_KEY) ?? "{}");
+  } catch {
+    return {};
+  }
+}
+
+function loadCollapsed(root: string | null | undefined): string[] {
+  return root ? (loadCollapsedMap()[root] ?? []) : [];
+}
+
+function saveCollapsed(root: string, ids: string[]) {
+  const map = loadCollapsedMap();
+  if (ids.length) map[root] = ids;
+  else delete map[root];
+  localStorage.setItem(COLLAPSED_KEY, JSON.stringify(map));
 }
 
 interface Store {
@@ -194,6 +216,10 @@ interface Store {
   sceneStats: Record<string, TextStats>;
   /** Liest alle Szenen des Binders neu ein (beim Öffnen/Neuladen eines Projekts). */
   refreshSceneStats: () => Promise<void>;
+  /** IDs der zugeklappten Ordner im Binder. */
+  collapsedIds: string[];
+  setCollapsed: (id: string, collapsed: boolean) => void;
+  toggleCollapsed: (id: string) => void;
   createNode: (parentId: string | null, kind: NodeKind, title: string) => Promise<void>;
   renameNode: (id: string, title: string) => Promise<void>;
   /** Legt eine Kopie samt Unterbaum direkt hinter dem Original ab. */
@@ -375,6 +401,7 @@ export const useStore = create<Store>((set, get) => {
       activePane: "leftTop" as PaneId,
       externalChanges: [],
       sceneStats: {},
+      collapsedIds: loadCollapsed(project?.root),
     });
     void get().refreshPlanIndex();
     void get().refreshSceneStats();
@@ -390,6 +417,7 @@ export const useStore = create<Store>((set, get) => {
     flowMode: localStorage.getItem(FLOW_KEY) === "1",
     normVariant: loadNormVariant(),
     sceneStats: {},
+    collapsedIds: [],
     externalChanges: [],
     error: null,
 
@@ -749,6 +777,17 @@ export const useStore = create<Store>((set, get) => {
         fail(e);
       }
     },
+
+    setCollapsed: (id, collapsed) => {
+      const ids = collapsed
+        ? [...new Set([...get().collapsedIds, id])]
+        : get().collapsedIds.filter((x) => x !== id);
+      const root = get().project?.root;
+      if (root) saveCollapsed(root, ids);
+      set({ collapsedIds: ids });
+    },
+
+    toggleCollapsed: (id) => get().setCollapsed(id, !get().collapsedIds.includes(id)),
 
     duplicateNode: async (id) => {
       try {

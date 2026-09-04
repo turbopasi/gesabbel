@@ -55,7 +55,10 @@ function BinderItem({ node }: { node: BinderNode }) {
     deleteNode,
     moveNode,
     updateNodeMeta,
+    setCollapsed,
+    toggleCollapsed,
   } = useStore();
+  const collapsed = useStore((s) => s.collapsedIds.includes(node.id));
   const isOpen = useStore((s) =>
     PANE_IDS.some(
       (p) => s.panes[p].sceneId === node.id || s.panes[p].corkboardId === node.id,
@@ -76,6 +79,12 @@ function BinderItem({ node }: { node: BinderNode }) {
     setEditing(true);
   }
 
+  /** Neues Dokument im Ordner — der klappt dafür auf, sonst landet es unsichtbar. */
+  async function addDocument() {
+    setCollapsed(node.id, false);
+    await createNode(node.id, "scene", "Dokument");
+  }
+
   /** Einträge des Rechtsklick-Menüs — Status und Farbe nur für Dokumente,
    *  passend zu den Karteikarten des Corkboards. */
   function menuItems(): ContextMenuItem[] {
@@ -84,8 +93,15 @@ function BinderItem({ node }: { node: BinderNode }) {
       items.push({
         label: "Neues Dokument",
         icon: "plus",
-        onSelect: () => void createNode(node.id, "scene", "Dokument"),
+        onSelect: () => void addDocument(),
       });
+      if (node.children.length > 0) {
+        items.push({
+          label: collapsed ? "Ausklappen" : "Einklappen",
+          icon: collapsed ? "chevron-down" : "chevron-right",
+          onSelect: () => toggleCollapsed(node.id),
+        });
+      }
     }
     items.push(
       { label: "Umbenennen", icon: "pencil", onSelect: startRename },
@@ -180,7 +196,9 @@ function BinderItem({ node }: { node: BinderNode }) {
     const binder = useStore.getState().project?.meta.binder ?? [];
 
     if (zone === "inside") {
-      // Ans Ende des Kapitels anhängen (Backend klemmt den Index).
+      // Ans Ende des Kapitels anhängen (Backend klemmt den Index) und
+      // aufklappen, damit sichtbar wird, wo das Gezogene gelandet ist.
+      setCollapsed(node.id, false);
       void moveNode(draggedId, node.id, Number.MAX_SAFE_INTEGER);
       return;
     }
@@ -251,6 +269,19 @@ function BinderItem({ node }: { node: BinderNode }) {
           />
         ) : (
           <>
+            {/* Feste Spalte, damit Ordner mit und ohne Inhalt sowie Dokumente
+                bündig stehen. */}
+            <span className="binder-disclosure" onClick={(e) => e.stopPropagation()}>
+              {node.kind === "chapter" && node.children.length > 0 && (
+                <button
+                  title={collapsed ? "Ausklappen" : "Einklappen"}
+                  aria-expanded={!collapsed}
+                  onClick={() => toggleCollapsed(node.id)}
+                >
+                  <Icon name={collapsed ? "chevron-right" : "chevron-down"} size={12} />
+                </button>
+              )}
+            </span>
             <span className="binder-title">
               {node.color && (
                 <span className="color-dot" style={{ background: node.color }} />
@@ -265,7 +296,7 @@ function BinderItem({ node }: { node: BinderNode }) {
               {node.kind === "chapter" && (
                 <button
                   title="Neues Dokument in diesem Ordner"
-                  onClick={() => void createNode(node.id, "scene", "Dokument")}
+                  onClick={() => void addDocument()}
                 >
                   <Icon name="plus" size={14} />
                 </button>
@@ -278,7 +309,7 @@ function BinderItem({ node }: { node: BinderNode }) {
         )}
       </div>
       {menu && <ContextMenu {...menu} onClose={closeMenu} />}
-      {node.children.length > 0 && (
+      {node.children.length > 0 && !collapsed && (
         <ul>
           {node.children.map((child) => (
             <BinderItem key={child.id} node={child} />
