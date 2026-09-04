@@ -10,6 +10,41 @@ ohne passenden Abschnitt bricht der Release-Workflow ab.
 Die Versionierung folgt der üblichen Lesart für 0.x: Die mittlere Zahl steigt
 bei neuen Funktionen, die letzte bei Fehlerbehebungen.
 
+## 0.6.0 — 2026-09-04
+
+### Neu
+
+- **Papierkorb.** Gelöschtes wanderte zwar schon in einen versteckten Ordner,
+  aber nur die Datei — Titel, Ordner und Platz im Baum gingen verloren.
+  Zurückholen ließ sich damit nichts, und nachsehen, was drin liegt, auch
+  nicht. Jetzt merkt sich der Papierkorb, was ein Eintrag war und wohin er
+  gehört, bei Ordnern samt allem, was darin lag. Im Binder steht er als feste
+  Zeile ganz unten; sein Inhalt öffnet sich wie der Zeitstrahl in einem eigenen
+  Bereich, mit Wiederherstellen, endgültig Löschen und Leeren. Personen, Orte
+  und Notizen sind mit drin. Wiederhergestellt wird erst, wenn alle Zieldateien
+  geprüft sind — ein Eintrag soll nicht halb zurückkommen; fehlt der alte
+  Ordner, landet er auf oberster Ebene.
+- **Farbe für Ordner.** Die Farbkante gab es bisher nur für Dokumente. Ordner
+  tragen sie jetzt auch — im Corkboard wie im Binder.
+- **„Neu" im Corkboard fragt nach Dokument oder Ordner** statt immer ein
+  Dokument anzulegen. Wer in einem Ordner steckt, kommt über einen Pfeil links
+  vom Titel eine Ebene höher.
+
+### Geändert
+
+- **Karteikarten sind aufgeräumt.** Der Fuß mit Statusauswahl, Bildknopf und
+  aufklappbarem Farb- und Tag-Feld ist weg. Von oben nach unten bleiben
+  Farbkante, Titel mit Ordner- oder Dokumentsymbol und Statuspille, Bild und
+  Synopsis — die Karte zeigt wieder, was auf ihr steht, statt was man mit ihr
+  tun kann. Gesetzt wird alles über das Rechtsklick-Menü der Karte: Umbenennen,
+  Duplizieren, Status, Farbe, Bild wählen oder entfernen, Löschen. Ein Bild aus
+  der Zwischenablage einzufügen bleibt, wie es war. Tags haben damit vorerst
+  keine Oberfläche mehr; die Daten bleiben im Projekt stehen.
+- **Der Hinweis auf eine neue Version sitzt oben in der Leiste** statt als
+  Balken über dem Startbildschirm, wo sein Knopf unter dem Einstellungsknopf
+  durchlief. Er trägt jetzt die Akzentfarbe des Programms — eine neue Version
+  ist kein Störfall — und zeigt beim Laden einen Fortschrittsbalken.
+
 ## 0.5.0 — 2026-09-04
 
 ### Neu
