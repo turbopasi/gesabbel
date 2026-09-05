@@ -10,6 +10,48 @@ ohne passenden Abschnitt bricht der Release-Workflow ab.
 Die Versionierung folgt der üblichen Lesart für 0.x: Die mittlere Zahl steigt
 bei neuen Funktionen, die letzte bei Fehlerbehebungen.
 
+## 0.7.0 — 2026-09-05
+
+### Neu
+
+- **Absatzformat.** Wie viel Luft zwischen zwei Absätzen liegt, hat bisher der
+  Browser entschieden — einstellbar war es nicht, und der deutsche Romansatz
+  mit eingezogener erster Zeile ließ sich gar nicht herstellen. Jetzt steht in
+  den Editor-Einstellungen beides zur Wahl: Abstand zwischen den Absätzen oder
+  Erstzeileneinzug, jeweils mit eigenem Maß. Der Einzug entfällt dort von
+  selbst, wo es keinen vorigen Absatz gibt, an den er anschließen könnte —
+  nach Überschriften, Linien, Szenentrennern und in Aufzählungen. Wer nichts
+  ändert, sieht nichts Neues: die Voreinstellung ist genau das bisherige Bild.
+- **Sprache des Manuskripts.** Sie war fest auf Deutsch verdrahtet, und daran
+  hängen zwei Dinge, die man beim Schreiben in einer anderen Sprache sofort
+  merkt: das Trennwörterbuch und die Rechtschreibprüfung. Beides folgt jetzt
+  einer Einstellung mit acht Sprachen. Die Rechtschreibprüfung lässt sich
+  außerdem abschalten — die roten Wellen unter jedem Eigennamen sind nicht
+  jedermanns Sache.
+- **Ausrichtung und Sprache im Export.** Die Export-Vorlage kennt jetzt eine
+  Grundausrichtung, eine Silbentrennung fürs ePub und eine Sprache.
+
+### Behoben
+
+- **Die Silbentrennung tat auf macOS und Linux nichts.** Dort versteht die
+  WebView nur die Schreibweise mit `-webkit-`-Präfix, und die fehlte. Der
+  Haken in den Einstellungen ließ sich setzen, blieb aber folgenlos.
+- **Die Trennung zerlegte Wörter an unleserlichen Stellen**, weil ihr keine
+  Mindestlänge vorgegeben war. Jetzt wird erst ab sechs Zeichen getrennt und
+  nie mit weniger als drei Zeichen vor oder nach dem Strich — bei deutschen
+  Komposita macht das den Unterschied zwischen ruhigem und zappeligem Satz.
+- **Eine lange URL ohne Leerzeichen lief über den Blattrand hinaus**, im
+  Blocksatz riss sie zusätzlich Löcher in die Zeile. Sie bricht jetzt um.
+- **Am Absatzende blieb schon mal ein einzelnes Wort allein in der Zeile.**
+  Der Umbruch achtet jetzt darauf, das zu vermeiden.
+- **Die Absatzausrichtung ging beim Export verloren** — in jedem Format, nicht
+  nur in einem. Ein zentrierter Absatz kam als gewöhnlicher Fließtext im DOCX,
+  PDF und ePub an. Sie wird jetzt durchgereicht; im PDF mit einer Einschränkung:
+  die verwendete Bibliothek kennt keinen Blocksatz, dort bleibt es bei
+  Flattersatz.
+- **E-Reader trennten in exportierten ePubs nicht**, weil dem Buchtext die
+  Sprachangabe und die Trennungsregel fehlten. Beides steht jetzt drin.
+
 ## 0.6.0 — 2026-09-04
 
 ### Neu
