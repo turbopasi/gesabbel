@@ -1471,6 +1471,12 @@ li.chapter > .binder-row > .binder-title {
   /* Nicht unter 6 Zeichen trennen, mindestens 3 davor und 3 danach — sonst
      zerlegt der Umbruch deutsche Komposita an unleserlichen Stellen. */
   hyphenate-limit-chars: var(--editor-hyphen-limit, 6 3 3);
+  /* Tiptap setzt `white-space: break-spaces`. Damit belegt das Leerzeichen am
+     automatischen Zeilenumbruch Breite — im Blocksatz endet die Zeile dadurch
+     sichtbar vor dem rechten Rand, und passt das Leerzeichen nicht mehr in die
+     Zeile, rückt es die nächste um eine Leerzeichenbreite ein. `pre-wrap` lässt
+     es stattdessen hängen; mehrfache Leerzeichen im Text bleiben erhalten. */
+  white-space: pre-wrap;
   /* Eine lange URL ohne Leerzeichen darf das Blatt nicht sprengen. */
   overflow-wrap: break-word;
   /* Keine Schusterjungen: das letzte Wort bleibt nicht allein in der Zeile. */
