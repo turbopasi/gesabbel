@@ -53,6 +53,22 @@ export function docExtensions() {
   ];
 }
 
+/** Schreibt Sprache und Rechtschreibprüfung an das contenteditable.
+ *
+ *  Als Effekt und nicht über `editorProps.attributes`, weil die Optionen von
+ *  `useEditor` nicht reaktiv sind — eine Änderung in den Einstellungen soll
+ *  greifen, ohne den Editor neu aufzubauen (das würde den Undo-Stack kosten).
+ *  Die Sprache steuert zugleich das Trennwörterbuch der WebView. */
+export function useEditorLanguage(editor: Editor | null) {
+  const language = useStore((s) => s.settings.editor.language);
+  const spellcheck = useStore((s) => s.settings.editor.spellcheck);
+  useEffect(() => {
+    if (!editor) return;
+    editor.view.dom.lang = language;
+    editor.view.dom.spellcheck = spellcheck;
+  }, [editor, language, spellcheck]);
+}
+
 export function RichEditor({ paneId }: { paneId: PaneId }) {
   const pane = useStore((s) => s.panes[paneId]);
   const isActive = useStore((s) => s.activePane === paneId && s.layoutMode !== "single");
@@ -112,6 +128,8 @@ function EditorInstance({
       if (useStore.getState().typewriter) centerCaret(editor);
     },
   });
+
+  useEditorLanguage(editor);
 
   const typewriter = useStore((s) => s.typewriter);
   const focusScene = useStore((s) => s.panes[paneId].sceneId);

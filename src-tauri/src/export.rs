@@ -51,6 +51,29 @@ pub struct ExportTemplate {
     pub scene_separator: String,
     pub chapter_start_new_page: bool,
     pub include_scene_titles: bool,
+    /// Grundausrichtung für Absätze ohne eigene Ausrichtung: "left" | "justify".
+    /// Leer = links. serde(default) hält ältere export-templates.json gültig.
+    #[serde(default)]
+    pub alignment: String,
+    /// Silbentrennung im ePub. PDF und DOCX trennen nicht — dort entscheidet
+    /// das Textverarbeitungsprogramm bzw. genpdf, nicht wir.
+    #[serde(default)]
+    pub hyphenation: bool,
+    /// BCP-47-Sprachcode für die ePub-Metadaten und xml:lang; leer = "de".
+    /// Ohne ihn trennt kein E-Reader.
+    #[serde(default)]
+    pub language: String,
+}
+
+impl ExportTemplate {
+    /// Grundausrichtung der Vorlage; unbekannte Werte fallen auf links zurück.
+    fn base_align(&self) -> Align {
+        Align::parse(&self.alignment).unwrap_or(Align::Left)
+    }
+
+    fn lang(&self) -> &str {
+        if self.language.trim().is_empty() { "de" } else { self.language.trim() }
+    }
 }
 
 fn builtin_templates() -> Vec<ExportTemplate> {
@@ -67,6 +90,9 @@ fn builtin_templates() -> Vec<ExportTemplate> {
             scene_separator: "* * *".into(),
             chapter_start_new_page: true,
             include_scene_titles: false,
+            alignment: "justify".into(),
+            hyphenation: true,
+            language: "de".into(),
         },
         // Deutsche Verlagskonvention: Times New Roman 12 pt, 1,5-zeilig,
         // Standardränder mit breiterem Korrekturrand rechts.
@@ -82,6 +108,10 @@ fn builtin_templates() -> Vec<ExportTemplate> {
             scene_separator: "* * *".into(),
             chapter_start_new_page: true,
             include_scene_titles: false,
+            // Die Normseite ist per Konvention Flattersatz und ungetrennt.
+            alignment: "left".into(),
+            hyphenation: false,
+            language: "de".into(),
         },
     ]
 }
@@ -168,10 +198,67 @@ struct Inline {
     italic: bool,
 }
 
+/// Absatzausrichtung. Markdown kennt keine — der Editor speichert sie als
+/// `<div style="text-align: …">`-Wrapper (siehe src/components/TextAlignMarkdown.ts),
+/// und genau den liest `parse_markdown` hier wieder aus.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Align {
+    Left,
+    Center,
+    Right,
+    Justify,
+}
+
+impl Align {
+    fn parse(s: &str) -> Option<Align> {
+        match s.trim() {
+            "left" => Some(Align::Left),
+            "center" => Some(Align::Center),
+            "right" => Some(Align::Right),
+            "justify" => Some(Align::Justify),
+            _ => None,
+        }
+    }
+
+    fn css(self) -> &'static str {
+        match self {
+            Align::Left => "left",
+            Align::Center => "center",
+            Align::Right => "right",
+            Align::Justify => "justify",
+        }
+    }
+}
+
+/// OOXML schreibt Blocksatz als "both" — "justified" ist kein gültiger
+/// ST_Jc-Wert, auch wenn docx-rs die Variante anbietet.
+fn docx_align(a: Align) -> docx_rs::AlignmentType {
+    use docx_rs::AlignmentType;
+    match a {
+        Align::Left => AlignmentType::Left,
+        Align::Center => AlignmentType::Center,
+        Align::Right => AlignmentType::Right,
+        Align::Justify => AlignmentType::Both,
+    }
+}
+
+/// Liest `text-align: <wert>` aus einem HTML-Schnipsel.
+fn align_in_html(html: &str) -> Option<Align> {
+    let rest = html.split("text-align:").nth(1)?;
+    let value: String = rest
+        .trim_start()
+        .chars()
+        .take_while(|c| c.is_ascii_alphabetic())
+        .collect();
+    Align::parse(&value)
+}
+
 enum Block {
     /// level 1 = Kapitel, 2 = Unterkapitel/Szene, 3 = tiefer.
     Heading { level: u8, text: String },
-    Paragraph(Vec<Inline>),
+    /// `align` ist die *explizite* Ausrichtung des Absatzes; None heißt
+    /// „Grundausrichtung der Vorlage".
+    Paragraph { inlines: Vec<Inline>, align: Option<Align> },
     /// Szenentrenner (Text kommt aus der Vorlage).
     Separator,
 }
@@ -195,16 +282,20 @@ fn parse_markdown(md: &str) -> Vec<Block> {
     let mut bold = 0u32;
     let mut italic = 0u32;
 
-    let flush_para = |cur: &mut Vec<Inline>, blocks: &mut Vec<Block>| {
+    // Verschachtelte Wrapper sind zwar nicht vorgesehen, ein Stapel kostet aber
+    // nichts und macht ein unerwartetes `</div>` harmlos.
+    let mut align_stack: Vec<Align> = Vec::new();
+
+    let flush_para = |cur: &mut Vec<Inline>, blocks: &mut Vec<Block>, align: Option<Align>| {
         if !cur.is_empty() {
-            blocks.push(Block::Paragraph(std::mem::take(cur)));
+            blocks.push(Block::Paragraph { inlines: std::mem::take(cur), align });
         }
     };
 
     for ev in Parser::new(md) {
         match ev {
             Event::Start(Tag::Heading { level, .. }) => {
-                flush_para(&mut cur, &mut blocks);
+                flush_para(&mut cur, &mut blocks, align_stack.last().copied());
                 heading_text.clear();
                 in_heading = Some(match level {
                     HeadingLevel::H1 => 1,
@@ -218,10 +309,10 @@ fn parse_markdown(md: &str) -> Vec<Block> {
                 }
             }
             Event::End(TagEnd::Paragraph) | Event::End(TagEnd::Item) => {
-                flush_para(&mut cur, &mut blocks);
+                flush_para(&mut cur, &mut blocks, align_stack.last().copied());
             }
             Event::Start(Tag::Item) => {
-                flush_para(&mut cur, &mut blocks);
+                flush_para(&mut cur, &mut blocks, align_stack.last().copied());
                 cur.push(Inline { text: "• ".into(), bold: false, italic: false });
             }
             Event::Start(Tag::Strong) => bold += 1,
@@ -243,13 +334,22 @@ fn parse_markdown(md: &str) -> Vec<Block> {
                 }
             }
             Event::Rule => {
-                flush_para(&mut cur, &mut blocks);
+                flush_para(&mut cur, &mut blocks, align_stack.last().copied());
                 blocks.push(Block::Separator);
+            }
+            // Die Ausrichtungs-Wrapper des Editors. Der Absatz dazwischen ist
+            // gewöhnliches Markdown und läuft durch die Arme oben.
+            Event::Html(h) | Event::InlineHtml(h) => {
+                if let Some(a) = align_in_html(&h) {
+                    align_stack.push(a);
+                } else if h.contains("</div>") {
+                    align_stack.pop();
+                }
             }
             _ => {}
         }
     }
-    flush_para(&mut cur, &mut blocks);
+    flush_para(&mut cur, &mut blocks, align_stack.last().copied());
     blocks
 }
 
@@ -387,7 +487,7 @@ fn write_markdown(chapters: &[CompChapter], tpl: &ExportTemplate, plain: bool) -
                         out.push_str(&format!("{} {text}\n\n", "#".repeat(*level as usize)));
                     }
                 }
-                Block::Paragraph(inlines) => {
+                Block::Paragraph { inlines, .. } => {
                     let line =
                         if plain { inline_to_text(inlines) } else { inline_to_md(inlines) };
                     out.push_str(line.trim_end());
@@ -495,6 +595,7 @@ fn write_docx(
     }
 
     let sep = separator_text(tpl);
+    let base_align = tpl.base_align();
     for (ci, ch) in chapters.iter().enumerate() {
         let mut first_in_chapter = true;
         let mut push = |docx: &mut Docx, mut par: Paragraph| {
@@ -511,8 +612,10 @@ fn write_docx(
         for b in &ch.blocks {
             match b {
                 Block::Heading { level, text } => push(&mut docx, heading_par(*level, text)),
-                Block::Paragraph(inlines) => {
-                    let mut par = Paragraph::new().line_spacing(spacing());
+                Block::Paragraph { inlines, align } => {
+                    let mut par = Paragraph::new()
+                        .line_spacing(spacing())
+                        .align(docx_align(align.unwrap_or(base_align)));
                     for i in inlines {
                         par = par.add_run(body_run(i));
                     }
@@ -569,8 +672,17 @@ fn chapter_to_xhtml(ch: &CompChapter, tpl: &ExportTemplate) -> String {
                 let l = (*level).clamp(1, 3) + 1; // Kapiteltitel ist h1
                 body.push_str(&format!("<h{l}>{}</h{l}>\n", xml_escape(text)));
             }
-            Block::Paragraph(inlines) => {
-                body.push_str(&format!("<p>{}</p>\n", inlines_to_xhtml(inlines)));
+            Block::Paragraph { inlines, align } => {
+                // Nur die *explizite* Ausrichtung wird inline gesetzt; die
+                // Grundausrichtung steht einmal im Stylesheet.
+                match align {
+                    Some(a) => body.push_str(&format!(
+                        "<p style=\"text-align: {}\">{}</p>\n",
+                        a.css(),
+                        inlines_to_xhtml(inlines)
+                    )),
+                    None => body.push_str(&format!("<p>{}</p>\n", inlines_to_xhtml(inlines))),
+                }
             }
             Block::Separator => {
                 if sep.is_empty() {
@@ -582,8 +694,9 @@ fn chapter_to_xhtml(ch: &CompChapter, tpl: &ExportTemplate) -> String {
         }
     }
     format!(
-        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE html>\n<html xmlns=\"http://www.w3.org/1999/xhtml\">\n<head><title>{}</title><link rel=\"stylesheet\" type=\"text/css\" href=\"style.css\"/></head>\n<body>\n{body}</body>\n</html>\n",
-        xml_escape(&ch.toc_title)
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE html>\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"{lang}\" lang=\"{lang}\">\n<head><title>{}</title><link rel=\"stylesheet\" type=\"text/css\" href=\"style.css\"/></head>\n<body>\n{body}</body>\n</html>\n",
+        xml_escape(&ch.toc_title),
+        lang = xml_escape(tpl.lang())
     )
 }
 
@@ -602,12 +715,22 @@ fn write_epub(
         "courier" => "monospace",
         _ => "serif",
     };
+    // -epub-hyphens ist die Eigenschaft, auf die Apple Books und ältere Reader
+    // hören; -webkit-hyphens deckt die WebKit-basierten ab.
+    let hyphens = if tpl.hyphenation {
+        "  hyphens: auto; -webkit-hyphens: auto; -epub-hyphens: auto;"
+    } else {
+        ""
+    };
     let css = format!(
-        "body {{ font-family: {generic}; line-height: {}; margin: 1em; }}\n\
-         h1, h2, h3, h4 {{ font-weight: bold; }}\n\
+        "body {{ font-family: {generic}; line-height: {spacing}; margin: 1em;\n\
+         {} text-align: {align}; }}\n\
+         h1, h2, h3, h4 {{ font-weight: bold; text-align: left; hyphens: manual; }}\n\
          p {{ margin: 0 0 0.6em 0; }}\n\
          p.sep {{ text-align: center; margin: 1em 0; }}\n",
-        tpl.line_spacing
+        hyphens,
+        spacing = tpl.line_spacing,
+        align = tpl.base_align().css()
     );
 
     let mut builder = EpubBuilder::new(ZipLibrary::new().map_err(|x| e(&x))?).map_err(|x| e(&x))?;
@@ -616,7 +739,7 @@ fn write_epub(
     if !author.trim().is_empty() {
         builder.metadata("author", author).map_err(|x| e(&x))?;
     }
-    builder.metadata("lang", "de").map_err(|x| e(&x))?;
+    builder.metadata("lang", tpl.lang()).map_err(|x| e(&x))?;
     builder.stylesheet(css.as_bytes()).map_err(|x| e(&x))?;
 
     for (i, ch) in chapters.iter().enumerate() {
@@ -777,6 +900,7 @@ fn write_pdf(
     doc.set_page_decorator(dec);
 
     let sep = separator_text(tpl).to_string();
+    let base_align = tpl.base_align();
     let para_gap = 1.5; // mm Abstand nach Absätzen
 
     for (ci, ch) in chapters.iter().enumerate() {
@@ -800,8 +924,13 @@ fn write_pdf(
                             .padded(Margins::trbl(2.0, 0.0, 3.0, 0.0)),
                     );
                 }
-                Block::Paragraph(inlines) => {
-                    let mut par = Paragraph::default();
+                Block::Paragraph { inlines, align } => {
+                    // genpdf kennt keinen Blocksatz — Justify landet auf links.
+                    let mut par = Paragraph::default().aligned(match align.unwrap_or(base_align) {
+                        Align::Center => Alignment::Center,
+                        Align::Right => Alignment::Right,
+                        _ => Alignment::Left,
+                    });
                     for i in inlines {
                         let mut style = Style::new();
                         if i.bold {
@@ -1016,13 +1145,38 @@ mod tests {
         let blocks = parse_markdown(
             "Am Abend kam [Er](person:jonas-3f2a1b) durch [den Wald](location:wald-9c11ab).",
         );
-        let Block::Paragraph(inlines) = &blocks[0] else {
+        let Block::Paragraph { inlines, .. } = &blocks[0] else {
             panic!("kein Absatz");
         };
         assert_eq!(inline_to_text(inlines), "Am Abend kam Er durch den Wald.");
         let md = inline_to_md(inlines);
         assert!(!md.contains("person:"), "Tag-Ziel im Export: {md}");
         assert!(!md.contains("location:"), "Tag-Ziel im Export: {md}");
+    }
+
+    /// Der Editor speichert Ausrichtung als div-Wrapper (TextAlignMarkdown.ts).
+    /// Bisher fiel der im Export unter den Tisch — jetzt trägt ihn der Absatz.
+    #[test]
+    fn alignment_survives_export() {
+        let md = r#"Ohne.
+
+<div style="text-align: center">
+
+Mittig.
+
+</div>
+
+Wieder ohne.
+"#;
+        let blocks = parse_markdown(md);
+        let aligns: Vec<Option<Align>> = blocks
+            .iter()
+            .filter_map(|b| match b {
+                Block::Paragraph { align, .. } => Some(*align),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(aligns, vec![None, Some(Align::Center), None]);
     }
 
     #[test]

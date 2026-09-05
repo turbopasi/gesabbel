@@ -1461,9 +1461,41 @@ li.chapter > .binder-row > .binder-title {
   box-shadow: var(--shadow-page);
   /* Grundausrichtung + Silbentrennung aus den Editor-Einstellungen;
      explizit ausgerichtete Absätze überschreiben das per Inline-Style.
-     Silbentrennung braucht lang="de" (index.html). */
+     Die Silbentrennung braucht ein lang-Attribut — das setzt applySettings
+     aus der eingestellten Sprache an <html>. */
   text-align: var(--editor-align, left);
   hyphens: var(--editor-hyphens, manual);
+  /* Ohne Präfix bleibt die Silbentrennung in WKWebView (macOS) und WebKitGTK
+     (Linux) wirkungslos — dort ist nur die -webkit-Variante implementiert. */
+  -webkit-hyphens: var(--editor-hyphens, manual);
+  /* Nicht unter 6 Zeichen trennen, mindestens 3 davor und 3 danach — sonst
+     zerlegt der Umbruch deutsche Komposita an unleserlichen Stellen. */
+  hyphenate-limit-chars: var(--editor-hyphen-limit, 6 3 3);
+  /* Eine lange URL ohne Leerzeichen darf das Blatt nicht sprengen. */
+  overflow-wrap: break-word;
+  /* Keine Schusterjungen: das letzte Wort bleibt nicht allein in der Zeile. */
+  text-wrap: pretty;
+}
+
+/* Absatzformat: entweder Abstand zwischen den Absätzen ODER Erstzeileneinzug
+   (deutscher Romansatz) — beides zusammen wäre doppelt gemoppelt. Welcher der
+   beiden Werte greift, entscheiden die Editor-Einstellungen. */
+.editor-content .ProseMirror p {
+  margin: 0 0 var(--editor-para-spacing, 1em);
+  text-indent: var(--editor-para-indent, 0);
+}
+
+/* Ein Einzug markiert den Anschluss an den vorigen Absatz. Nach einer Zäsur
+   gibt es keinen — und in einer Aufzählung ist der Listenpunkt der Anschluss. */
+.editor-content .ProseMirror li p,
+.editor-content .ProseMirror > p:first-child,
+.editor-content .ProseMirror h1 + p,
+.editor-content .ProseMirror h2 + p,
+.editor-content .ProseMirror h3 + p,
+.editor-content .ProseMirror hr + p,
+.editor-content .ProseMirror blockquote + p,
+.editor-content .ProseMirror .scene-break + p {
+  text-indent: 0;
 }
 
 .editor-content .ProseMirror h1,
@@ -1472,6 +1504,9 @@ li.chapter > .binder-row > .binder-title {
   font-family: inherit;
   line-height: var(--leading-snug);
   margin-top: 1.6em;
+  /* Absätze tragen ihren Abstand nur nach unten — der Luft unter einer
+     Überschrift muss die Überschrift selbst mitbringen. */
+  margin-bottom: 0.6em;
 }
 
 .editor-content .ProseMirror > *:first-child {

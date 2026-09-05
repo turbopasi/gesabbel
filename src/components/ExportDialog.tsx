@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { save } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { api } from "../api";
+import { LANGUAGE_OPTIONS } from "../settings";
 import { useStore } from "../store";
 import {
   EXPORT_FONT_LABEL,
@@ -257,6 +258,37 @@ function ExportDialog() {
                     ))}
                   </span>
                 </div>
+                <div className="export-row">
+                  <span>Ausrichtung</span>
+                  <span className="export-inline">
+                    <select
+                      value={tpl.alignment || "left"}
+                      onChange={(e) => patchTpl({ alignment: e.target.value })}
+                    >
+                      <option value="left">Linksbündig</option>
+                      <option value="justify">Blocksatz</option>
+                    </select>
+                    <span className="muted small">
+                      gilt für Absätze ohne eigene Ausrichtung; PDF setzt immer Flattersatz
+                    </span>
+                  </span>
+                </div>
+                <div className="export-row">
+                  <span>Sprache</span>
+                  <span className="export-inline">
+                    <select
+                      value={tpl.language || "de"}
+                      onChange={(e) => patchTpl({ language: e.target.value })}
+                    >
+                      {LANGUAGE_OPTIONS.map((l) => (
+                        <option key={l.value} value={l.value}>
+                          {l.label}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="muted small">ePub-Metadaten und Silbentrennung</span>
+                  </span>
+                </div>
                 <label className="export-row">
                   <span>Kopfzeile</span>
                   <input
@@ -273,6 +305,14 @@ function ExportDialog() {
                     placeholder="leer = Leerzeile"
                     onChange={(e) => patchTpl({ sceneSeparator: e.target.value })}
                   />
+                </label>
+                <label className="export-check">
+                  <input
+                    type="checkbox"
+                    checked={tpl.hyphenation}
+                    onChange={(e) => patchTpl({ hyphenation: e.target.checked })}
+                  />
+                  Silbentrennung im ePub (empfohlen bei Blocksatz)
                 </label>
                 <label className="export-check">
                   <input

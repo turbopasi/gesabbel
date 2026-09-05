@@ -5,6 +5,7 @@ import {
   COLOR_FIELDS,
   DARK_COLORS,
   FONT_OPTIONS,
+  LANGUAGE_OPTIONS,
   LIGHT_COLORS,
   SHORTCUT_ACTIONS,
   THEME_OPTIONS,
@@ -307,6 +308,43 @@ function EditorTab() {
         <span className="muted small">rem (≈ Zeichen pro Zeile × 0,6)</span>
       </label>
       <label className="settings-row">
+        <span>Absatzformat</span>
+        <select
+          value={ed.paragraphStyle}
+          onChange={(e) => patch({ paragraphStyle: e.target.value as "spaced" | "indent" })}
+        >
+          <option value="spaced">Abstand zwischen Absätzen</option>
+          <option value="indent">Erstzeileneinzug (Romansatz)</option>
+        </select>
+      </label>
+      {ed.paragraphStyle === "spaced" ? (
+        <label className="settings-row">
+          <span>Absatzabstand</span>
+          <input
+            type="number"
+            min={0}
+            max={2.5}
+            step={0.1}
+            value={ed.paragraphSpacing}
+            onChange={(e) => patch({ paragraphSpacing: clamp(e.target.valueAsNumber, 0, 2.5, 1) })}
+          />
+          <span className="muted small">em</span>
+        </label>
+      ) : (
+        <label className="settings-row">
+          <span>Einzug</span>
+          <input
+            type="number"
+            min={0}
+            max={4}
+            step={0.5}
+            value={ed.paragraphIndent}
+            onChange={(e) => patch({ paragraphIndent: clamp(e.target.valueAsNumber, 0, 4, 1.5) })}
+          />
+          <span className="muted small">em</span>
+        </label>
+      )}
+      <label className="settings-row">
         <span>Cursor-Stil</span>
         <select
           value={ed.cursorStyle}
@@ -334,6 +372,25 @@ function EditorTab() {
           onChange={(e) => patch({ hyphenation: e.target.checked })}
         />
         <span>Automatische Silbentrennung (empfohlen bei Blocksatz)</span>
+      </label>
+      <label className="settings-row">
+        <span>Sprache</span>
+        <select value={ed.language} onChange={(e) => patch({ language: e.target.value })}>
+          {LANGUAGE_OPTIONS.map((l) => (
+            <option key={l.value} value={l.value}>
+              {l.label}
+            </option>
+          ))}
+        </select>
+        <span className="muted small">steuert Silbentrennung und Rechtschreibprüfung</span>
+      </label>
+      <label className="settings-row">
+        <input
+          type="checkbox"
+          checked={ed.spellcheck}
+          onChange={(e) => patch({ spellcheck: e.target.checked })}
+        />
+        <span>Rechtschreibprüfung</span>
       </label>
       <p className="muted small">
         Diese Einstellungen wirken auf den Schreib-Editor und die Notizen — nicht auf den

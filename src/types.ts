@@ -115,6 +115,12 @@ export interface ExportTemplate {
   sceneSeparator: string;
   chapterStartNewPage: boolean;
   includeSceneTitles: boolean;
+  /** Grundausrichtung für Absätze ohne eigene Ausrichtung: "left" | "justify". */
+  alignment: string;
+  /** Silbentrennung im ePub (PDF und DOCX trennen nicht). */
+  hyphenation: boolean;
+  /** BCP-47-Sprachcode für ePub-Metadaten und xml:lang. */
+  language: string;
 }
 
 export const EXPORT_FORMAT_LABEL: Record<ExportFormat, string> = {

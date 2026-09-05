@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { useStore, type PaneId } from "../store";
-import { docExtensions, getMarkdown, Toolbar } from "./RichEditor";
+import { docExtensions, getMarkdown, Toolbar, useEditorLanguage } from "./RichEditor";
 import { imagePasteHandler } from "./DocImage";
 import { PlanTagOverlay } from "./PlanTagOverlay";
 import type { WriteResult } from "../types";
@@ -106,6 +106,8 @@ function DocEditorInstance({
       if (statusRef.current === "dirty") void flushRef.current();
     },
   });
+
+  useEditorLanguage(editor);
 
   if (!editor) return null;
 

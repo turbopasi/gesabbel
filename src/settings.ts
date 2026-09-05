@@ -30,6 +30,18 @@ export interface EditorSettings {
   defaultAlignment: "left" | "justify";
   /** Automatische Silbentrennung (wichtig für sauberen Blocksatz). */
   hyphenation: boolean;
+  /** "spaced" = Abstand zwischen den Absätzen, "indent" = Erstzeileneinzug
+   *  (deutscher Romansatz). Beide Maße bleiben gespeichert, damit der Wechsel
+   *  zwischen den Formaten nichts verliert. */
+  paragraphStyle: "spaced" | "indent";
+  /** Abstand nach jedem Absatz in em — gilt bei paragraphStyle "spaced". */
+  paragraphSpacing: number;
+  /** Einzug der ersten Zeile in em — gilt bei paragraphStyle "indent". */
+  paragraphIndent: number;
+  /** BCP-47-Sprachcode; steuert Trennwörterbuch und Rechtschreibprüfung. */
+  language: string;
+  /** Rechtschreibprüfung des Systems im Editor. */
+  spellcheck: boolean;
 }
 
 export interface LayoutSettings {
@@ -135,6 +147,20 @@ export const FONT_OPTIONS: { label: string; value: string }[] = [
   { label: "Schreibmaschine (Monospace)", value: '"Courier New", ui-monospace, monospace' },
 ];
 
+/** Sprache des Manuskripts. Der Code landet als lang-Attribut am Editor und
+ *  entscheidet damit, welches Trennwörterbuch und welche Rechtschreibprüfung
+ *  die WebView verwendet. */
+export const LANGUAGE_OPTIONS: { label: string; value: string }[] = [
+  { label: "Deutsch", value: "de" },
+  { label: "Deutsch (Schweiz)", value: "de-CH" },
+  { label: "Englisch", value: "en" },
+  { label: "Englisch (UK)", value: "en-GB" },
+  { label: "Französisch", value: "fr" },
+  { label: "Spanisch", value: "es" },
+  { label: "Italienisch", value: "it" },
+  { label: "Niederländisch", value: "nl" },
+];
+
 // ---------------------------------------------------------------------------
 // Tastaturkürzel
 // ---------------------------------------------------------------------------
@@ -208,6 +234,13 @@ export function defaultSettings(): AppSettings {
       cursorStyle: "standard",
       defaultAlignment: "left",
       hyphenation: true,
+      // 1em Abstand und kein Einzug: genau das, was der Browser bisher von
+      // sich aus gemacht hat — bestehende Projekte sehen unverändert aus.
+      paragraphStyle: "spaced",
+      paragraphSpacing: 1,
+      paragraphIndent: 1.5,
+      language: "de",
+      spellcheck: true,
     },
     layout: {
       binderVisible: true,
@@ -291,6 +324,14 @@ export function applySettings(s: AppSettings) {
   );
   root.style.setProperty("--editor-align", s.editor.defaultAlignment);
   root.style.setProperty("--editor-hyphens", s.editor.hyphenation ? "auto" : "manual");
+  // Absatzabstand und Einzug schließen einander aus — der nicht gewählte Wert
+  // wird auf 0 gesetzt, statt beide Regeln zu verzweigen.
+  const indented = s.editor.paragraphStyle === "indent";
+  root.style.setProperty("--editor-para-spacing", indented ? "0" : `${s.editor.paragraphSpacing}em`);
+  root.style.setProperty("--editor-para-indent", indented ? `${s.editor.paragraphIndent}em` : "0");
+  // Silbentrennung folgt der Dokumentsprache; index.html trägt "de" nur als
+  // Wert für die Zeit vor dem ersten Lauf dieser Funktion.
+  root.lang = s.editor.language;
   root.style.setProperty("--binder-width", `${s.layout.binderWidth}px`);
   root.style.setProperty("--research-width", `${s.layout.researchWidth}px`);
 
