@@ -50,7 +50,12 @@ export function statusMenuItem(node: BinderNode): ContextMenuItem {
   };
 }
 
-export function colorMenuItem(node: BinderNode): ContextMenuItem {
+/** Die Farbpalette als Untermenü — Binder, Karteikarte und Zeitstrahl teilen
+ *  sie sich, damit es in der App nur eine Palette gibt. `""` löscht die Farbe. */
+export function colorSubmenu(
+  current: string | null | undefined,
+  onPick: (color: string) => void,
+): ContextMenuItem {
   return {
     kind: "submenu",
     label: "Farbe",
@@ -59,17 +64,23 @@ export function colorMenuItem(node: BinderNode): ContextMenuItem {
       ...COLOR_PRESETS.map((c) => ({
         label: COLOR_LABEL[c] ?? c,
         mark: <span className="color-dot" style={{ background: c }} />,
-        checked: node.color === c,
-        onSelect: () => void useStore.getState().updateNodeMeta(node.id, { color: c }),
+        checked: current === c,
+        onSelect: () => onPick(c),
       })),
       {
         label: "Keine Farbe",
         icon: "x" as const,
-        checked: !node.color,
-        onSelect: () => void useStore.getState().updateNodeMeta(node.id, { color: "" }),
+        checked: !current,
+        onSelect: () => onPick(""),
       },
     ],
   };
+}
+
+export function colorMenuItem(node: BinderNode): ContextMenuItem {
+  return colorSubmenu(node.color, (color) =>
+    void useStore.getState().updateNodeMeta(node.id, { color }),
+  );
 }
 
 /** Rückfrage vor dem Löschen — der Wortlaut steht nur hier. */

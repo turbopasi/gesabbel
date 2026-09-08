@@ -72,6 +72,26 @@ export interface TimelineEvent {
   when?: string;
   description?: string;
   sceneIds?: string[];
+  /** Handlungsstrang; leer heißt „erster Strang" (Dateien vor den Strängen). */
+  trackId?: string;
+}
+
+/** Ein Handlungsstrang. `color` ist ein Wert aus COLOR_PRESETS, "" = keine. */
+export interface TimelineTrack {
+  id: string;
+  name: string;
+  color?: string;
+}
+
+/** Stränge nebeneinander (Zeit läuft nach unten) oder untereinander (nach rechts). */
+export type TimelineOrientation = "columns" | "rows";
+
+/** Der ganze Zeitstrahl, so wie er in timeline.json steht. Die Reihenfolge im
+ *  events-Array ist die Chronologie; ein Strang sieht davon seinen Anteil. */
+export interface Timeline {
+  tracks: TimelineTrack[];
+  events: TimelineEvent[];
+  orientation?: TimelineOrientation | "";
 }
 
 /** Fundstelle eines Planungs-Tags im Text (Rückverlinkung). */

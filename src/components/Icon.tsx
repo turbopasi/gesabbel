@@ -8,6 +8,8 @@ const PATHS = {
     "<path d=\"M12 5v14\" /> <path d=\"m19 12-7 7-7-7\" />",
   "arrow-left":
     "<path d=\"m12 19-7-7 7-7\" /> <path d=\"M19 12H5\" />",
+  "arrow-right":
+    "<path d=\"M5 12h14\" /> <path d=\"m12 5 7 7-7 7\" />",
   "arrow-up":
     "<path d=\"m5 12 7-7 7 7\" /> <path d=\"M12 19V5\" />",
   "bold":
@@ -24,6 +26,8 @@ const PATHS = {
     "<path d=\"m9 18 6-6-6-6\" />",
   "clock":
     "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <polyline points=\"12 6 12 12 16 14\" />",
+  "columns-2":
+    "<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" /> <path d=\"M12 3v18\" />",
   "copy":
     "<rect width=\"14\" height=\"14\" x=\"8\" y=\"8\" rx=\"2\" ry=\"2\" /> <path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\" />",
   "ellipsis":
@@ -66,6 +70,8 @@ const PATHS = {
     "<path d=\"m15 14 5-5-5-5\" /> <path d=\"M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13\" />",
   "rotate-cw":
     "<path d=\"M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8\" /> <path d=\"M21 3v5h-5\" />",
+  "rows-2":
+    "<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" /> <path d=\"M3 12h18\" />",
   "search":
     "<circle cx=\"11\" cy=\"11\" r=\"8\" /> <path d=\"m21 21-4.3-4.3\" />",
   "settings":

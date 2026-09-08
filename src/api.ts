@@ -9,7 +9,7 @@ import type {
   NoteInfo,
   ProjectInfo,
   SearchHit,
-  TimelineEvent,
+  Timeline,
   TrashItem,
   VersionInfo,
   WriteResult,
@@ -98,9 +98,9 @@ export const api = {
   writeNote: (id: string, content: string, force = false) =>
     invoke<WriteResult>("write_note", { id, content, force }),
 
-  loadTimeline: () => invoke<TimelineEvent[]>("load_timeline"),
-  saveTimeline: (events: TimelineEvent[]) =>
-    invoke<TimelineEvent[]>("save_timeline", { events }),
+  loadTimeline: () => invoke<Timeline>("load_timeline"),
+  saveTimeline: (timeline: Timeline) =>
+    invoke<Timeline>("save_timeline", { timeline }),
 
   searchProject: (query: string) => invoke<SearchHit[]>("search_project", { query }),
 

@@ -2135,14 +2135,18 @@ li.chapter > .binder-row > .binder-title {
 }
 
 /* --------------------------------------------------------------------------
-   Zeitstrahl
+   Zeitstrahl: mehrere Handlungsstränge, wahlweise als Spalten (Zeit läuft
+   nach unten) oder als Zeilen (Zeit läuft nach rechts). Beide Ansichten
+   teilen sich Karte und Schiene; nur die Achse dreht sich.
    -------------------------------------------------------------------------- */
 
 .timeline {
   flex: 1;
   /* Läuft als Pane-Inhalt in einer Flex-Spalte — ohne min-height kein Scrollen. */
   min-height: 0;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   padding: var(--space-8);
 }
 
@@ -2159,42 +2163,207 @@ li.chapter > .binder-row > .binder-title {
   font: var(--type-title);
 }
 
+.timeline-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* Ansichtsschalter: zwei Knöpfe als ein Paar, der aktive bleibt gedrückt. */
+.timeline-orientation {
+  display: flex;
+}
+
+.timeline-orientation button {
+  min-height: 26px;
+  padding: 0 var(--space-4);
+  color: var(--text-muted);
+}
+
+.timeline-orientation button:first-child {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.timeline-orientation button:last-child {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  margin-left: -1px;
+}
+
+.timeline-orientation button.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--text-strong);
+  z-index: 1;
+}
+
+.timeline-board {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: var(--space-7);
+  overflow: auto;
+}
+
+/* Stränge nebeneinander: jeder eine Spalte, die für sich scrollt. */
+.timeline-board.columns {
+  flex-direction: row;
+}
+
+.timeline-board.columns .timeline-track {
+  flex: 0 0 24rem;
+  min-height: 0;
+}
+
+.timeline-board.columns .timeline-list {
+  overflow-y: auto;
+}
+
+/* Stränge untereinander: jeder eine Bahn, die waagerecht scrollt. */
+.timeline-board.rows {
+  flex-direction: column;
+}
+
+.timeline-board.rows .timeline-list {
+  flex-direction: row;
+  align-items: flex-start;
+  overflow-x: auto;
+  padding-top: var(--space-7);
+  padding-left: 0;
+}
+
+.timeline-track {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: var(--space-5);
+}
+
+.timeline-track-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.track-name {
+  flex: 1;
+  min-width: 0;
+  font: var(--type-subheading);
+  color: var(--text-strong);
+  border: none;
+  background: transparent;
+  padding: 0;
+  min-height: auto;
+}
+
+.track-name:focus {
+  box-shadow: none;
+}
+
 .timeline-list {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0 0 var(--space-6);
   position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: var(--space-6);
 }
 
+/* Die Schiene: senkrecht in Spalten, waagerecht in Zeilen — in der Farbe des
+   Strangs, damit sich die Bahnen auf einen Blick unterscheiden. */
 .timeline-list::before {
   content: "";
   position: absolute;
+  background: color-mix(in oklab, var(--track) 35%, transparent);
+}
+
+.timeline-board.columns .timeline-list::before {
   left: 5px;
   top: 0;
   bottom: 0;
   width: 1px;
-  background: var(--border-subtle);
+}
+
+.timeline-board.rows .timeline-list::before {
+  top: 5px;
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.timeline-list.drop-end {
+  box-shadow: inset 0 0 0 1px var(--accent);
+  border-radius: var(--radius-md);
 }
 
 .timeline-event {
   position: relative;
+}
+
+.timeline-board.columns .timeline-event {
   padding-left: var(--space-9);
-  margin-bottom: var(--space-6);
+}
+
+.timeline-board.rows .timeline-event {
+  flex: 0 0 22rem;
+  padding-top: var(--space-9);
 }
 
 .timeline-marker {
   position: absolute;
-  left: 0;
-  top: var(--space-6);
   width: 11px;
   height: 11px;
   border-radius: var(--radius-pill);
-  background: var(--accent);
+  background: var(--track);
   box-shadow: 0 0 0 3px var(--surface-app);
+}
+
+.timeline-board.columns .timeline-marker {
+  left: 0;
+  top: var(--space-6);
+}
+
+.timeline-board.rows .timeline-marker {
+  top: 0;
+  left: var(--space-6);
+}
+
+/* Ziehmarke wie im Korkbrett: eine Kante in der Akzentfarbe zeigt, wo das
+   Ereignis landet — quer zur Laufrichtung des jeweiligen Strahls. */
+.timeline-board.columns .timeline-event.drop-before .timeline-card {
+  box-shadow: 0 -3px 0 0 var(--accent), var(--shadow-1);
+}
+
+.timeline-board.columns .timeline-event.drop-after .timeline-card {
+  box-shadow: 0 3px 0 0 var(--accent), var(--shadow-1);
+}
+
+.timeline-board.rows .timeline-event.drop-before .timeline-card {
+  box-shadow: -3px 0 0 0 var(--accent), var(--shadow-1);
+}
+
+.timeline-board.rows .timeline-event.drop-after .timeline-card {
+  box-shadow: 3px 0 0 0 var(--accent), var(--shadow-1);
+}
+
+.timeline-track-empty {
+  padding: var(--space-5) 0 var(--space-5) var(--space-9);
+  font-size: var(--text-xs);
+}
+
+.timeline-board.rows .timeline-track-empty {
+  padding: var(--space-5) 0 var(--space-5) var(--space-6);
 }
 
 .timeline-card {
   border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--track);
   border-radius: var(--radius-md);
   background: var(--surface-card);
   box-shadow: var(--shadow-1);
@@ -2202,7 +2371,12 @@ li.chapter > .binder-row > .binder-title {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  max-width: 44rem;
+}
+
+/* In Zeilen sitzt der Marker oben — dann trägt auch die obere Kante die Farbe. */
+.timeline-board.rows .timeline-card {
+  border-left: 1px solid var(--border-subtle);
+  border-top: 3px solid var(--track);
 }
 
 .timeline-card-header {
@@ -2219,6 +2393,7 @@ li.chapter > .binder-row > .binder-title {
   padding: 0;
   min-height: auto;
   flex: 1;
+  min-width: 0;
 }
 
 .event-when:focus {
