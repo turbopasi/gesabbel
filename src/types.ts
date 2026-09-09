@@ -74,6 +74,9 @@ export interface TimelineEvent {
   sceneIds?: string[];
   /** Handlungsstrang; leer heißt „erster Strang" (Dateien vor den Strängen). */
   trackId?: string;
+  /** Position auf der gemeinsamen Zeitachse. Gleicher Slot in zwei Strängen
+   *  heißt „zur selben Zeit"; ausgelassene Slots sind gewollte Lücken. */
+  slot?: number;
 }
 
 /** Ein Handlungsstrang. `color` ist ein Wert aus COLOR_PRESETS, "" = keine. */

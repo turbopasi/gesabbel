@@ -10,6 +10,7 @@ use crate::project::{
 use crate::trash;
 use base64::Engine;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
 
 // ---------------------------------------------------------------------------
@@ -922,6 +923,7 @@ Hier steht [ein Link](https://example.org) und [jemand anders](person:mara-11aa2
                 description: String::new(),
                 scene_ids: Vec::new(),
                 track_id: String::new(),
+                slot: None,
             }],
             orientation: String::new(),
         };
@@ -945,11 +947,68 @@ Hier steht [ein Link](https://example.org) und [jemand anders](person:mara-11aa2
                 description: String::new(),
                 scene_ids: Vec::new(),
                 track_id: "weg".into(),
+                slot: None,
             }],
             orientation: String::new(),
         };
         normalize(&mut tl);
         assert_eq!(tl.events[0].track_id, "a");
+    }
+
+    /// Kleines Ereignis fuer die Slot-Tests.
+    fn ev(id: &str, track: &str, slot: Option<u32>) -> TimelineEvent {
+        TimelineEvent {
+            id: id.into(),
+            title: id.into(),
+            when: String::new(),
+            description: String::new(),
+            scene_ids: Vec::new(),
+            track_id: track.into(),
+            slot,
+        }
+    }
+
+    #[test]
+    fn vergibt_slots_fuer_alte_dateien() {
+        let mut tl = Timeline {
+            tracks: vec![
+                TimelineTrack { id: "a".into(), name: "A".into(), color: String::new() },
+                TimelineTrack { id: "b".into(), name: "B".into(), color: String::new() },
+            ],
+            events: vec![
+                ev("a1", "a", None),
+                ev("a2", "a", None),
+                ev("b1", "b", None),
+            ],
+            orientation: String::new(),
+        };
+        normalize(&mut tl);
+        // Jeder Strang zaehlt fuer sich ab null — so steht alles nebeneinander,
+        // wie es vor den Slots aussah.
+        assert_eq!(tl.events[0].slot, Some(0));
+        assert_eq!(tl.events[1].slot, Some(1));
+        assert_eq!(tl.events[2].slot, Some(0));
+    }
+
+    #[test]
+    fn haelt_luecken_und_loest_doppelte_slots_auf() {
+        let mut tl = Timeline {
+            tracks: vec![TimelineTrack {
+                id: "a".into(),
+                name: "A".into(),
+                color: String::new(),
+            }],
+            events: vec![
+                ev("a1", "a", Some(2)),
+                ev("a2", "a", Some(2)),
+                ev("a3", "a", Some(7)),
+            ],
+            orientation: String::new(),
+        };
+        normalize(&mut tl);
+        assert_eq!(tl.events[0].slot, Some(2));
+        assert_eq!(tl.events[1].slot, Some(3));
+        assert_eq!(tl.events[2].slot, Some(7));
     }
 
     #[test]
@@ -994,6 +1053,11 @@ pub struct TimelineEvent {
     /// Strang" — so bleiben Dateien aus der Zeit vor den Strängen lesbar.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub track_id: String,
+    /// Platz auf der gemeinsamen Zeitachse. Gleicher Slot in zwei Strängen
+    /// heißt "zur selben Zeit"; übersprungene Slots sind gewollte Lücken.
+    /// Fehlt in Dateien aus der Zeit vor den Slots — `normalize` trägt ihn nach.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub slot: Option<u32>,
 }
 
 /// Der ganze Zeitstrahl einer Datei: Stränge, Ereignisse, Ausrichtung.
@@ -1069,5 +1133,16 @@ fn normalize(timeline: &mut Timeline) {
         if !timeline.tracks.iter().any(|t| t.id == ev.track_id) {
             ev.track_id = first.clone();
         }
+    }
+    // Slots: innerhalb eines Strangs streng steigend in Array-Reihenfolge.
+    // Dateien aus der Zeit vor den Slots bekommen so 0, 1, 2 …, doppelt
+    // belegte Slots lösen sich auf, und gewollte Lücken bleiben stehen, weil
+    // ein vorhandener größerer Slot immer gewinnt.
+    let mut last: HashMap<String, u32> = HashMap::new();
+    for ev in timeline.events.iter_mut() {
+        let next = last.get(&ev.track_id).map_or(0, |prev| prev + 1);
+        let slot = ev.slot.unwrap_or(next).max(next);
+        ev.slot = Some(slot);
+        last.insert(ev.track_id.clone(), slot);
     }
 }

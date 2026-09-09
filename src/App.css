@@ -2198,54 +2198,55 @@ li.chapter > .binder-row > .binder-title {
   z-index: 1;
 }
 
+/* Das Raster: auf der einen Achse die Stränge, auf der anderen die Slots.
+   Weil sich alle Stränge dieselben Zeilen (bzw. Spalten) teilen, steht
+   gleicher Slot auch wirklich auf gleicher Höhe — darum geht es in dieser
+   Ansicht. Wie viele Stränge und Slots es sind, weiß nur das Panel; es setzt
+   die Rasterspuren am Element selbst, hier steht, wie sie aussehen. */
 .timeline-board {
   flex: 1;
   min-height: 0;
-  display: flex;
-  gap: var(--space-7);
+  display: grid;
+  align-content: start;
+  justify-content: start;
   overflow: auto;
 }
 
-/* Stränge nebeneinander: jeder eine Spalte, die für sich scrollt. */
+/* Stränge nebeneinander: Zeit läuft nach unten. */
 .timeline-board.columns {
-  flex-direction: row;
+  --lane: 24rem;
+  gap: var(--space-6) var(--space-7);
 }
 
-.timeline-board.columns .timeline-track {
-  flex: 0 0 24rem;
-  min-height: 0;
-}
-
-.timeline-board.columns .timeline-list {
-  overflow-y: auto;
-}
-
-/* Stränge untereinander: jeder eine Bahn, die waagerecht scrollt. */
+/* Stränge untereinander: Zeit läuft nach rechts. */
 .timeline-board.rows {
-  flex-direction: column;
+  --lane: 22rem;
+  gap: var(--space-7) var(--space-6);
 }
 
-.timeline-board.rows .timeline-list {
-  flex-direction: row;
-  align-items: flex-start;
-  overflow-x: auto;
-  padding-top: var(--space-7);
-  padding-left: 0;
-}
-
-.timeline-track {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  gap: var(--space-5);
-}
-
+/* Der Kopf bleibt beim Blättern stehen — nach zehn Slots weiß man sonst nicht
+   mehr, welcher Strang welcher ist. */
 .timeline-track-header {
   display: flex;
   align-items: center;
   gap: var(--space-4);
   padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-app);
+  position: sticky;
+  z-index: 2;
+}
+
+.timeline-board.columns .timeline-track-header {
+  top: 0;
+}
+
+.timeline-board.rows .timeline-track-header {
+  left: 0;
+  width: 12rem;
+  padding: 0 var(--space-4) 0 0;
+  border-bottom: none;
+  border-right: 1px solid var(--border-subtle);
 }
 
 .track-name {
@@ -2263,47 +2264,42 @@ li.chapter > .binder-row > .binder-title {
   box-shadow: none;
 }
 
-.timeline-list {
-  list-style: none;
-  margin: 0;
-  padding: 0 0 var(--space-6);
+/* Die Schiene in der Farbe des Strangs. Sie liegt als eigenes Element hinter
+   den Zellen, weil es im Raster keine Bahn mehr gibt, in der eine Linie
+   mitlaufen könnte. */
+.timeline-rail {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  gap: var(--space-6);
+  pointer-events: none;
+  z-index: 0;
 }
 
-/* Die Schiene: senkrecht in Spalten, waagerecht in Zeilen — in der Farbe des
-   Strangs, damit sich die Bahnen auf einen Blick unterscheiden. */
-.timeline-list::before {
+.timeline-rail::before {
   content: "";
   position: absolute;
   background: color-mix(in oklab, var(--track) 35%, transparent);
 }
 
-.timeline-board.columns .timeline-list::before {
+.timeline-board.columns .timeline-rail::before {
   left: 5px;
   top: 0;
   bottom: 0;
   width: 1px;
 }
 
-.timeline-board.rows .timeline-list::before {
+.timeline-board.rows .timeline-rail::before {
   top: 5px;
   left: 0;
   right: 0;
   height: 1px;
 }
 
-.timeline-list.drop-end {
-  box-shadow: inset 0 0 0 1px var(--accent);
-  border-radius: var(--radius-md);
-}
-
-.timeline-event {
+/* Eine Zelle des Rasters: entweder eine Karte oder eine Lücke. Beide liegen
+   über der Schiene und lassen quer zur Zeitachse Platz für den Punkt. */
+.timeline-event,
+.timeline-slot {
   position: relative;
+  z-index: 1;
+  min-width: 0;
 }
 
 .timeline-board.columns .timeline-event {
@@ -2311,8 +2307,17 @@ li.chapter > .binder-row > .binder-title {
 }
 
 .timeline-board.rows .timeline-event {
-  flex: 0 0 22rem;
   padding-top: var(--space-9);
+}
+
+/* Beim leeren Slot dieselbe Einrückung als Rand, nicht als Innenabstand — so
+   liegt der gestrichelte Rahmen genau dort, wo sonst die Karte anfängt. */
+.timeline-board.columns .timeline-slot {
+  margin-left: var(--space-9);
+}
+
+.timeline-board.rows .timeline-slot {
+  margin-top: var(--space-9);
 }
 
 .timeline-marker {
@@ -2334,31 +2339,42 @@ li.chapter > .binder-row > .binder-title {
   left: var(--space-6);
 }
 
-/* Ziehmarke wie im Korkbrett: eine Kante in der Akzentfarbe zeigt, wo das
-   Ereignis landet — quer zur Laufrichtung des jeweiligen Strahls. */
-.timeline-board.columns .timeline-event.drop-before .timeline-card {
-  box-shadow: 0 -3px 0 0 var(--accent), var(--shadow-1);
+/* Der leere Slot: hier passiert in diesem Strang nichts, während im Strang
+   nebenan etwas geschieht. Der gestrichelte Rahmen steht in der Farbe des
+   Strangs und hat das Maß einer Karte — die Lücke ist eine Aussage und soll
+   auch so viel Platz einnehmen. Das „+" kommt erst beim Überfahren dazu. */
+.timeline-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 10rem;
+  border: 1px dashed color-mix(in oklab, var(--track) 30%, transparent);
+  border-radius: var(--radius-md);
 }
 
-.timeline-board.columns .timeline-event.drop-after .timeline-card {
-  box-shadow: 0 3px 0 0 var(--accent), var(--shadow-1);
+.timeline-slot-add {
+  opacity: 0;
+  min-height: 24px;
+  padding: 0 var(--space-4);
+  border-style: dashed;
+  background: transparent;
+  color: var(--text-muted);
 }
 
-.timeline-board.rows .timeline-event.drop-before .timeline-card {
-  box-shadow: -3px 0 0 0 var(--accent), var(--shadow-1);
+.timeline-slot:hover .timeline-slot-add {
+  opacity: 1;
 }
 
-.timeline-board.rows .timeline-event.drop-after .timeline-card {
-  box-shadow: 3px 0 0 0 var(--accent), var(--shadow-1);
+.timeline-slot.drop-here {
+  border-color: var(--accent);
+  border-style: solid;
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 
-.timeline-track-empty {
-  padding: var(--space-5) 0 var(--space-5) var(--space-9);
-  font-size: var(--text-xs);
-}
-
-.timeline-board.rows .timeline-track-empty {
-  padding: var(--space-5) 0 var(--space-5) var(--space-6);
+/* Ziehmarke: die Karte, auf der man landet, bekommt die Akzentkante — was
+   dort steht, rückt beim Loslassen einen Slot weiter. */
+.timeline-event.drop-here .timeline-card {
+  box-shadow: 0 0 0 2px var(--accent), var(--shadow-1);
 }
 
 .timeline-card {
@@ -2381,8 +2397,35 @@ li.chapter > .binder-row > .binder-title {
 
 .timeline-card-header {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
+}
+
+/* Der Griff: hier wird angefasst. Immer da, aber leise — er soll den Blick
+   nicht von der Karte nehmen und trotzdem zeigen, wo das Ziehen anfängt. */
+.timeline-grip {
+  display: flex;
+  align-items: center;
+  margin: calc(var(--space-2) * -1) 0 calc(var(--space-2) * -1) calc(var(--space-2) * -1);
+  padding: var(--space-2) var(--space-1);
+  border-radius: var(--radius-sm);
+  color: var(--text-faint);
+  cursor: grab;
+  transition: var(--transition-control);
+}
+
+.timeline-card:hover .timeline-grip {
+  color: var(--text-muted);
+}
+
+.timeline-grip:hover {
+  background: var(--surface-hover);
+  color: var(--text-strong);
+}
+
+.timeline-grip:active {
+  cursor: grabbing;
 }
 
 .event-when {

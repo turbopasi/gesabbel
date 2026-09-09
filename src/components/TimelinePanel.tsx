@@ -1,14 +1,17 @@
-// Zeitstrahl: mehrere Handlungsstränge nebeneinander. Die Reihenfolge im
-// events-Array ist die Chronologie — es gibt bewusst kein Datum, damit auch
-// erfundene Kalender funktionieren; das Feld „Wann?" bleibt Freitext.
-// Jeder Strang trägt eine Farbe aus der Palette des Binders, und die Ansicht
-// kippt zwischen Spalten (Zeit läuft nach unten) und Zeilen (nach rechts).
+// Zeitstrahl: mehrere Handlungsstränge auf einem gemeinsamen Raster aus Slots.
+// Der Slot ist die Zeitangabe der Ansicht — gleicher Slot in zwei Strängen
+// heißt „zur selben Zeit", ein ausgelassener Slot ist eine gewollte Lücke:
+// dort passiert in diesem Strang nichts, während anderswo etwas geschieht.
+// Ein Datum gibt es bewusst nicht, damit auch erfundene Kalender funktionieren;
+// das Feld „Wann?" bleibt Freitext. Die Ansicht kippt zwischen Spalten (Zeit
+// läuft nach unten) und Zeilen (nach rechts) — dasselbe Raster, transponiert.
 import {
+  Fragment,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
-  type DragEvent as ReactDragEvent,
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import { ask } from "@tauri-apps/plugin-dialog";
@@ -35,23 +38,16 @@ import { Icon } from "./Icon";
 // Zustand gehört zur Mausgeste, nicht zum Bild.
 let draggedEventId: string | null = null;
 
-/** Ereignisse nach Strängen, in der Reihenfolge der Stränge. */
-function groupByTrack(
-  tracks: TimelineTrack[],
-  events: TimelineEvent[],
-): Map<string, TimelineEvent[]> {
-  const groups = new Map<string, TimelineEvent[]>(tracks.map((t) => [t.id, []]));
-  const first = tracks[0]?.id ?? "";
-  for (const ev of events) {
-    const key = groups.has(ev.trackId ?? "") ? ev.trackId! : first;
-    groups.get(key)?.push(ev);
-  }
-  return groups;
+/** Fehlt der Slot (Dateien aus der Zeit vor dem Raster), zählt der erste. */
+function slotOf(ev: TimelineEvent) {
+  return ev.slot ?? 0;
 }
 
-/** Aus den Gruppen wieder ein flaches Array — Strang für Strang. */
-function flatten(tracks: TimelineTrack[], groups: Map<string, TimelineEvent[]>) {
-  return tracks.flatMap((t) => groups.get(t.id) ?? []);
+/** Belegung des Rasters: Strang und Slot zeigen auf höchstens eine Karte. */
+function byCell(events: TimelineEvent[]) {
+  const cells = new Map<string, TimelineEvent>();
+  for (const ev of events) cells.set(`${ev.trackId ?? ""}#${slotOf(ev)}`, ev);
+  return cells;
 }
 
 export function TimelinePanel() {
@@ -59,7 +55,7 @@ export function TimelinePanel() {
   // Panel die Ereignisse des vorigen Projekts.
   const projectRoot = useStore((s) => s.project?.root);
   const [timeline, setTimeline] = useState<Timeline | null>(null);
-  const { menu, openAt, close: closeMenu } = useContextMenu();
+  const { menu, open: openMenu, openAt, close: closeMenu } = useContextMenu();
 
   useEffect(() => {
     let cancelled = false;
@@ -74,9 +70,13 @@ export function TimelinePanel() {
   }, [projectRoot]);
 
   const tracks = timeline?.tracks ?? [];
-  const groups = useMemo(
-    () => groupByTrack(tracks, timeline?.events ?? []),
-    [tracks, timeline?.events],
+  const events = useMemo(() => timeline?.events ?? [], [timeline?.events]);
+  const cells = useMemo(() => byCell(events), [events]);
+  // Eine Zeile mehr als belegt: hinten bleibt immer Platz zum Anlegen und
+  // Ablegen, so wie früher der freie Raum unter den Karten.
+  const slots = useMemo(
+    () => events.reduce((max, ev) => Math.max(max, slotOf(ev) + 1), 0) + 1,
+    [events],
   );
 
   if (timeline === null) return <div className="timeline" />;
@@ -84,19 +84,30 @@ export function TimelinePanel() {
   const orientation: TimelineOrientation =
     timeline.orientation === "rows" ? "rows" : "columns";
 
+  function cellAt(trackId: string, slot: number) {
+    return cells.get(`${trackId}#${slot}`);
+  }
+
   async function persist(next: Timeline) {
     setTimeline(next);
     try {
-      // Die Antwort trägt die vom Backend vergebenen IDs.
+      // Die Antwort trägt die vom Backend vergebenen IDs und Slots.
       setTimeline(await api.saveTimeline(next));
     } catch (e) {
       useStore.setState({ error: String(e) });
     }
   }
 
-  /** Nur die Gruppen ändern, die Strangreihenfolge bleibt. */
-  function persistGroups(next: Map<string, TimelineEvent[]>, nextTracks = tracks) {
-    void persist({ ...timeline!, tracks: nextTracks, events: flatten(nextTracks, next) });
+  /** Ereignisse strangweise und darin nach Slot sortiert schreiben — das
+   *  Backend liest die Slots eines Strangs in Array-Reihenfolge. */
+  function persistEvents(next: TimelineEvent[], nextTracks = tracks) {
+    const order = new Map(nextTracks.map((t, i) => [t.id, i]));
+    const sorted = [...next].sort(
+      (a, b) =>
+        (order.get(a.trackId ?? "") ?? 0) - (order.get(b.trackId ?? "") ?? 0) ||
+        slotOf(a) - slotOf(b),
+    );
+    void persist({ ...timeline!, tracks: nextTracks, events: sorted });
   }
 
   function addTrack() {
@@ -120,11 +131,11 @@ export function TimelinePanel() {
     const next = [...tracks];
     const [moved] = next.splice(index, 1);
     next.splice(index + dir, 0, moved);
-    persistGroups(groups, next);
+    persistEvents(events, next);
   }
 
   async function deleteTrack(track: TimelineTrack) {
-    const count = groups.get(track.id)?.length ?? 0;
+    const count = events.filter((e) => e.trackId === track.id).length;
     const yes = await ask(
       count === 0
         ? `Strang "${track.name}" löschen?`
@@ -132,56 +143,156 @@ export function TimelinePanel() {
       { title: "Löschen", kind: "warning" },
     );
     if (!yes) return;
-    const nextTracks = tracks.filter((t) => t.id !== track.id);
-    const nextGroups = new Map(groups);
-    nextGroups.delete(track.id);
-    persistGroups(nextGroups, nextTracks);
+    persistEvents(
+      events.filter((e) => e.trackId !== track.id),
+      tracks.filter((t) => t.id !== track.id),
+    );
   }
 
-  function addEvent(trackId: string) {
-    const next = new Map(groups);
-    next.set(trackId, [
-      ...(next.get(trackId) ?? []),
-      { id: "", title: "Neues Ereignis", when: "", description: "", sceneIds: [], trackId },
+  function addEvent(trackId: string, slot: number) {
+    persistEvents([
+      ...events,
+      {
+        id: "",
+        title: "Neues Ereignis",
+        when: "",
+        description: "",
+        sceneIds: [],
+        trackId,
+        slot,
+      },
     ]);
-    persistGroups(next);
+  }
+
+  /** Neues Ereignis hinter der letzten Karte des Strangs. */
+  function appendEvent(trackId: string) {
+    const behind = events
+      .filter((e) => e.trackId === trackId)
+      .reduce((max, e) => Math.max(max, slotOf(e) + 1), 0);
+    addEvent(trackId, behind);
   }
 
   function patchEvent(id: string, patch: Partial<TimelineEvent>) {
-    void persist({
-      ...timeline!,
-      events: timeline!.events.map((e) => (e.id === id ? { ...e, ...patch } : e)),
-    });
+    persistEvents(events.map((e) => (e.id === id ? { ...e, ...patch } : e)));
   }
 
   function deleteEvent(id: string) {
-    void persist({ ...timeline!, events: timeline!.events.filter((e) => e.id !== id) });
+    persistEvents(events.filter((e) => e.id !== id));
   }
 
-  function moveEvent(trackId: string, index: number, dir: -1 | 1) {
-    const list = [...(groups.get(trackId) ?? [])];
-    const [moved] = list.splice(index, 1);
-    list.splice(index + dir, 0, moved);
-    const next = new Map(groups);
-    next.set(trackId, list);
-    persistGroups(next);
-  }
-
-  /** Ziehen: `beforeId` ist das Ereignis, vor dem eingefügt wird — null hängt
-   *  ans Ende des Strangs. Funktioniert auch über Strangrenzen hinweg. */
-  function dropEvent(dragId: string, trackId: string, beforeId: string | null) {
-    if (dragId === beforeId) return;
-    const source = timeline!.events.find((e) => e.id === dragId);
-    if (!source) return;
-    const next = groupByTrack(
-      tracks,
-      timeline!.events.filter((e) => e.id !== dragId),
+  /** Kern aller Lücken: alles ab `from` um `by` verrücken — in einem Strang
+   *  oder (bei `trackId === null`) über alle Stränge hinweg. */
+  function shift(
+    list: TimelineEvent[],
+    trackId: string | null,
+    from: number,
+    by: 1 | -1,
+  ) {
+    return list.map((e) =>
+      (trackId === null || e.trackId === trackId) && slotOf(e) >= from
+        ? { ...e, slot: slotOf(e) + by }
+        : e,
     );
-    const list = [...(next.get(trackId) ?? [])];
-    const at = beforeId ? list.findIndex((e) => e.id === beforeId) : -1;
-    list.splice(at < 0 ? list.length : at, 0, { ...source, trackId });
-    next.set(trackId, list);
-    persistGroups(next);
+  }
+
+  /** Lücke vor `at`: rückt nur ein Strang weiter, verschiebt er sich sichtbar
+   *  gegen die anderen — genau dafür sind Lücken da. Rücken alle gemeinsam,
+   *  bleibt die Ausrichtung und es entsteht nur Luft im Raster. */
+  function insertGap(trackId: string | null, at: number) {
+    persistEvents(shift(events, trackId, at, 1));
+  }
+
+  /** Umkehrung: der leere Slot `at` verschwindet, alles danach rückt heran. */
+  function removeGap(trackId: string | null, at: number) {
+    persistEvents(shift(events, trackId, at + 1, -1));
+  }
+
+  /** Pfeiltasten: eine Karte einen Slot weiter. Ist der Nachbarslot frei,
+   *  wandert die Karte in die Lücke; ist er belegt, tauschen die beiden — so
+   *  bleibt das gewohnte Umsortieren, ohne Lücken zu verschlucken. */
+  function moveEvent(ev: TimelineEvent, dir: -1 | 1) {
+    const from = slotOf(ev);
+    const to = from + dir;
+    if (to < 0) return;
+    const other = cellAt(ev.trackId ?? "", to);
+    persistEvents(
+      events.map((e) => {
+        if (e.id === ev.id) return { ...e, slot: to };
+        if (other && e.id === other.id) return { ...e, slot: from };
+        return e;
+      }),
+    );
+  }
+
+  /** Ziehen auf eine Zelle. Ist sie belegt, wird weggeschoben: die dortige
+   *  Karte und alle danach im Zielstrang rücken einen Slot weiter. Der alte
+   *  Platz bleibt als Lücke stehen — es rutscht nichts hinter dem Rücken des
+   *  Schreibenden zusammen. */
+  function dropEvent(dragId: string, trackId: string, slot: number) {
+    const source = events.find((e) => e.id === dragId);
+    if (!source || (source.trackId === trackId && slotOf(source) === slot)) return;
+    const pushed = cellAt(trackId, slot) ? shift(events, trackId, slot, 1) : events;
+    persistEvents(pushed.map((e) => (e.id === dragId ? { ...e, trackId, slot } : e)));
+  }
+
+  /** Beide Lücken an einer Stelle: der eine Strang oder alle zusammen. */
+  function gapItems(trackId: string, at: number): ContextMenuItem[] {
+    return [
+      { label: "In diesem Strang", onSelect: () => insertGap(trackId, at) },
+      { label: "Über alle Stränge", onSelect: () => insertGap(null, at) },
+    ];
+  }
+
+  function eventMenu(ev: TimelineEvent): ContextMenuItem[] {
+    const trackId = ev.trackId ?? tracks[0].id;
+    const slot = slotOf(ev);
+    return [
+      {
+        kind: "submenu",
+        label: "Lücke davor",
+        icon: "plus",
+        items: gapItems(trackId, slot),
+      },
+      {
+        kind: "submenu",
+        label: "Lücke dahinter",
+        icon: "plus",
+        items: gapItems(trackId, slot + 1),
+      },
+      { kind: "separator" },
+      {
+        label: "Ereignis löschen",
+        icon: "trash-2",
+        danger: true,
+        onSelect: () =>
+          void ask(`Ereignis "${ev.title}" löschen?`, {
+            title: "Löschen",
+            kind: "warning",
+          }).then((yes) => yes && deleteEvent(ev.id)),
+      },
+    ];
+  }
+
+  function slotMenu(trackId: string, slot: number): ContextMenuItem[] {
+    return [
+      { label: "Ereignis anlegen", icon: "plus", onSelect: () => addEvent(trackId, slot) },
+      { kind: "separator" },
+      {
+        kind: "submenu",
+        label: "Lücke einfügen",
+        icon: "plus",
+        items: gapItems(trackId, slot),
+      },
+      { label: "Lücke entfernen", icon: "x", onSelect: () => removeGap(trackId, slot) },
+      {
+        label: "Lücke überall entfernen",
+        icon: "x",
+        // Nur wenn die ganze Zeile frei ist — sonst verschwände eine Karte,
+        // die man beim Aufräumen gar nicht im Blick hat.
+        disabled: tracks.some((t) => cellAt(t.id, slot)),
+        onSelect: () => removeGap(null, slot),
+      },
+    ];
   }
 
   function trackMenu(track: TimelineTrack, index: number): ContextMenuItem[] {
@@ -212,6 +323,17 @@ export function TimelinePanel() {
     ];
   }
 
+  /** Kopf, Schiene und Zellen sitzen im selben Raster; welche Achse die Zeit
+   *  ist, entscheidet die Ausrichtung. Der Kopf belegt die erste Stelle der
+   *  Zeitachse, die Schiene läuft über den ganzen Rest. */
+  function place(trackIndex: number, slot: number | "header" | "rail"): CSSProperties {
+    const lane = trackIndex + 1;
+    const time = slot === "header" ? 1 : slot === "rail" ? "2 / -1" : slot + 2;
+    return orientation === "columns"
+      ? { gridColumn: lane, gridRow: time }
+      : { gridRow: lane, gridColumn: time };
+  }
+
   return (
     <div className="timeline">
       <div className="timeline-header">
@@ -239,197 +361,219 @@ export function TimelinePanel() {
           </button>
         </div>
       </div>
-      <div className={`timeline-board ${orientation}`}>
-        {tracks.map((track, i) => (
-          <TrackLane
-            key={track.id || i}
-            track={track}
-            events={groups.get(track.id) ?? []}
-            orientation={orientation}
-            onRename={(name) => patchTrack(track.id, { name })}
-            onMenu={(e) => openBelow(e, trackMenu(track, i), openAt)}
-            onAdd={() => addEvent(track.id)}
-            onPatchEvent={patchEvent}
-            onDeleteEvent={deleteEvent}
-            onMoveEvent={(index, dir) => moveEvent(track.id, index, dir)}
-            onDrop={(beforeId) =>
-              draggedEventId && dropEvent(draggedEventId, track.id, beforeId)
-            }
-          />
-        ))}
+      <div
+        className={`timeline-board ${orientation}`}
+        style={{
+          gridTemplateColumns:
+            orientation === "columns"
+              ? `repeat(${tracks.length}, var(--lane))`
+              : `auto repeat(${slots}, var(--lane))`,
+          gridTemplateRows:
+            orientation === "columns"
+              ? `auto repeat(${slots}, auto)`
+              : `repeat(${tracks.length}, auto)`,
+        }}
+      >
+        {tracks.map((track, i) => {
+          const lane = { "--track": track.color || "var(--accent)" } as CSSProperties;
+          return (
+            <Fragment key={track.id || i}>
+              <TrackHeader
+                track={track}
+                style={{ ...lane, ...place(i, "header") }}
+                onRename={(name) => patchTrack(track.id, { name })}
+                onMenu={(e) => openBelow(e, trackMenu(track, i), openAt)}
+                onAdd={() => appendEvent(track.id)}
+              />
+              <div className="timeline-rail" style={{ ...lane, ...place(i, "rail") }} />
+              {Array.from({ length: slots }, (_, slot) => {
+                const ev = cellAt(track.id, slot);
+                const style = { ...lane, ...place(i, slot) };
+                const drop = () =>
+                  draggedEventId && dropEvent(draggedEventId, track.id, slot);
+                return ev ? (
+                  <EventCard
+                    key={ev.id || `${track.id}#${slot}`}
+                    event={ev}
+                    style={style}
+                    orientation={orientation}
+                    first={slot === 0}
+                    onChange={(patch) => patchEvent(ev.id, patch)}
+                    onMove={(dir) => moveEvent(ev, dir)}
+                    onMenu={(e) => openBelow(e, eventMenu(ev), openAt)}
+                    onContextMenu={(e) => openMenu(e, eventMenu(ev))}
+                    onDropHere={drop}
+                  />
+                ) : (
+                  <EmptySlot
+                    key={`${track.id}#${slot}`}
+                    style={style}
+                    onAdd={() => addEvent(track.id, slot)}
+                    onContextMenu={(e) => openMenu(e, slotMenu(track.id, slot))}
+                    onDropHere={drop}
+                  />
+                );
+              })}
+            </Fragment>
+          );
+        })}
       </div>
       {menu && <ContextMenu {...menu} onClose={closeMenu} />}
     </div>
   );
 }
 
-function TrackLane({
+function TrackHeader({
   track,
-  events,
-  orientation,
+  style,
   onRename,
   onMenu,
   onAdd,
-  onPatchEvent,
-  onDeleteEvent,
-  onMoveEvent,
-  onDrop,
 }: {
   track: TimelineTrack;
-  events: TimelineEvent[];
-  orientation: TimelineOrientation;
+  style: CSSProperties;
   onRename: (name: string) => void;
   onMenu: (e: ReactMouseEvent<HTMLElement>) => void;
   onAdd: () => void;
-  onPatchEvent: (id: string, patch: Partial<TimelineEvent>) => void;
-  onDeleteEvent: (id: string) => void;
-  onMoveEvent: (index: number, dir: -1 | 1) => void;
-  onDrop: (beforeId: string | null) => void;
 }) {
   const [name, setName] = useState(track.name);
-  const [dropEnd, setDropEnd] = useState(false);
-  const color = track.color || "var(--accent)";
 
   return (
-    <section className="timeline-track" style={{ "--track": color } as CSSProperties}>
-      <div className="timeline-track-header">
-        <span className="color-dot" style={{ background: color }} />
-        <input
-          className="track-name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={() => name.trim() && name !== track.name && onRename(name.trim())}
-        />
-        <span className="timeline-actions">
-          <button title="Ereignis anlegen" onClick={onAdd}>
-            <Icon name="plus" size={14} />
-          </button>
-          <button title="Strang" onClick={onMenu}>
-            <Icon name="ellipsis" size={14} />
-          </button>
-        </span>
-      </div>
-      <ol
-        className={`timeline-list ${dropEnd ? "drop-end" : ""}`}
-        // Freier Platz unter (bzw. neben) den Karten hängt ans Ende an — so
-        // lässt sich ein Ereignis auch in einen leeren Strang ziehen.
-        onDragOver={(e) => {
-          if (!draggedEventId) return;
-          e.preventDefault();
-          setDropEnd(true);
-        }}
-        onDragLeave={() => setDropEnd(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDropEnd(false);
-          onDrop(null);
-        }}
-      >
-        {events.map((ev, i) => (
-          <EventCard
-            key={ev.id || i}
-            event={ev}
-            orientation={orientation}
-            first={i === 0}
-            last={i === events.length - 1}
-            onChange={(patch) => onPatchEvent(ev.id, patch)}
-            onMove={(dir) => onMoveEvent(i, dir)}
-            onDelete={async () => {
-              const yes = await ask(`Ereignis "${ev.title}" löschen?`, {
-                title: "Löschen",
-                kind: "warning",
-              });
-              if (yes) onDeleteEvent(ev.id);
-            }}
-            onDrop={(before) => onDrop(before ? ev.id : (events[i + 1]?.id ?? null))}
-          />
-        ))}
-        {events.length === 0 && (
-          <li className="timeline-track-empty muted">Noch keine Ereignisse.</li>
-        )}
-      </ol>
-    </section>
+    <div className="timeline-track-header" style={style}>
+      <span className="color-dot" style={{ background: track.color || "var(--accent)" }} />
+      <input
+        className="track-name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onBlur={() => name.trim() && name !== track.name && onRename(name.trim())}
+      />
+      <span className="timeline-actions">
+        <button title="Ereignis anlegen" onClick={onAdd}>
+          <Icon name="plus" size={14} />
+        </button>
+        <button title="Strang" onClick={onMenu}>
+          <Icon name="ellipsis" size={14} />
+        </button>
+      </span>
+    </div>
+  );
+}
+
+/** Freier Slot: hier ist in diesem Strang gerade nichts los. Zurückhaltend
+ *  gezeichnet — zu sehen ist er erst, wenn man ihn braucht. */
+function EmptySlot({
+  style,
+  onAdd,
+  onContextMenu,
+  onDropHere,
+}: {
+  style: CSSProperties;
+  onAdd: () => void;
+  onContextMenu: (e: ReactMouseEvent<HTMLElement>) => void;
+  onDropHere: () => void;
+}) {
+  const [over, setOver] = useState(false);
+
+  return (
+    <div
+      className={`timeline-slot ${over ? "drop-here" : ""}`}
+      style={style}
+      onContextMenu={onContextMenu}
+      onDragOver={(e) => {
+        if (!draggedEventId) return;
+        e.preventDefault();
+        setOver(true);
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setOver(false);
+        onDropHere();
+      }}
+    >
+      <button className="timeline-slot-add" title="Ereignis anlegen" onClick={onAdd}>
+        <Icon name="plus" size={14} />
+      </button>
+    </div>
   );
 }
 
 function EventCard({
   event,
+  style,
   orientation,
   first,
-  last,
   onChange,
   onMove,
-  onDelete,
-  onDrop,
+  onMenu,
+  onContextMenu,
+  onDropHere,
 }: {
   event: TimelineEvent;
+  style: CSSProperties;
   orientation: TimelineOrientation;
   first: boolean;
-  last: boolean;
   onChange: (patch: Partial<TimelineEvent>) => void;
   onMove: (dir: -1 | 1) => void;
-  onDelete: () => void;
-  onDrop: (before: boolean) => void;
+  onMenu: (e: ReactMouseEvent<HTMLElement>) => void;
+  onContextMenu: (e: ReactMouseEvent<HTMLElement>) => void;
+  onDropHere: () => void;
 }) {
   const [title, setTitle] = useState(event.title);
   const [when, setWhen] = useState(event.when ?? "");
   const [description, setDescription] = useState(event.description ?? "");
-  const [dropSide, setDropSide] = useState<"before" | "after" | null>(null);
-  // Beim Schreiben nicht ziehen — sonst reißt die Textauswahl die Karte mit.
-  const [editing, setEditing] = useState(false);
-
-  /** Vor oder hinter der Karte? In Spalten zählt oben/unten, in Zeilen links/rechts. */
-  function side(e: ReactDragEvent): "before" | "after" {
-    const r = e.currentTarget.getBoundingClientRect();
-    return orientation === "columns"
-      ? e.clientY < r.top + r.height / 2
-        ? "before"
-        : "after"
-      : e.clientX < r.left + r.width / 2
-        ? "before"
-        : "after";
-  }
+  const [over, setOver] = useState(false);
+  // Gezogen wird nur am Griff — die Karte ist voller Textfelder, und wer darin
+  // etwas markieren will, soll sie nicht versehentlich verschieben.
+  const card = useRef<HTMLDivElement>(null);
 
   return (
-    <li
-      className={`timeline-event ${dropSide ? `drop-${dropSide}` : ""}`}
-      draggable={!editing}
-      onDragStart={(e) => {
-        draggedEventId = event.id;
-        e.dataTransfer.setData("text/plain", event.id);
-        e.dataTransfer.effectAllowed = "move";
-      }}
-      onDragEnd={() => {
-        draggedEventId = null;
+    <div
+      className={`timeline-event ${over ? "drop-here" : ""}`}
+      style={style}
+      onContextMenu={(e) => {
+        // Im Textfeld gehört der Rechtsklick der Rechtschreibprüfung.
+        if ((e.target as HTMLElement).closest("input, textarea")) return;
+        onContextMenu(e);
       }}
       onDragOver={(e) => {
         if (!draggedEventId || draggedEventId === event.id) return;
         e.preventDefault();
-        e.stopPropagation();
-        setDropSide(side(e));
+        setOver(true);
       }}
-      onDragLeave={() => setDropSide(null)}
+      onDragLeave={() => setOver(false)}
       onDrop={(e) => {
         e.preventDefault();
-        e.stopPropagation();
-        const before = side(e) === "before";
-        setDropSide(null);
-        onDrop(before);
+        setOver(false);
+        onDropHere();
       }}
     >
       <div className="timeline-marker" />
-      <div className="timeline-card">
+      <div className="timeline-card" ref={card}>
         <div className="timeline-card-header">
+          <span
+            className="timeline-grip"
+            title="Zum Verschieben ziehen"
+            draggable
+            onDragStart={(e) => {
+              draggedEventId = event.id;
+              e.dataTransfer.setData("text/plain", event.id);
+              e.dataTransfer.effectAllowed = "move";
+              // Am Mauszeiger hängt die ganze Karte, nicht der Griff allein.
+              if (card.current) e.dataTransfer.setDragImage(card.current, 24, 24);
+            }}
+            onDragEnd={() => {
+              draggedEventId = null;
+            }}
+          >
+            <Icon name="grip-vertical" size={14} />
+          </span>
           <input
             className="event-when"
             placeholder="Wann? (z. B. 3. März, Tag 12 …)"
             value={when}
-            onFocus={() => setEditing(true)}
             onChange={(e) => setWhen(e.target.value)}
-            onBlur={() => {
-              setEditing(false);
-              if (when !== (event.when ?? "")) onChange({ when });
-            }}
+            onBlur={() => when !== (event.when ?? "") && onChange({ when })}
           />
           <span className="timeline-actions">
             <button
@@ -440,7 +584,6 @@ function EventCard({
               <Icon name={orientation === "columns" ? "arrow-up" : "arrow-left"} size={14} />
             </button>
             <button
-              disabled={last}
               title={orientation === "columns" ? "Nach unten" : "Nach rechts"}
               onClick={() => onMove(1)}
             >
@@ -449,37 +592,31 @@ function EventCard({
                 size={14}
               />
             </button>
-            <button title="Löschen" onClick={onDelete}>
-              <Icon name="trash-2" size={14} />
+            <button title="Ereignis" onClick={onMenu}>
+              <Icon name="ellipsis" size={14} />
             </button>
           </span>
         </div>
         <input
           className="event-title"
           value={title}
-          onFocus={() => setEditing(true)}
           onChange={(e) => setTitle(e.target.value)}
-          onBlur={() => {
-            setEditing(false);
-            if (title.trim() && title !== event.title) onChange({ title });
-          }}
+          onBlur={() => title.trim() && title !== event.title && onChange({ title })}
         />
         <textarea
           className="event-description"
           placeholder="Was passiert? …"
           value={description}
-          onFocus={() => setEditing(true)}
           onChange={(e) => setDescription(e.target.value)}
-          onBlur={() => {
-            setEditing(false);
-            if (description !== (event.description ?? "")) onChange({ description });
-          }}
+          onBlur={() =>
+            description !== (event.description ?? "") && onChange({ description })
+          }
         />
         <SceneLinks
           sceneIds={event.sceneIds ?? []}
           onChange={(sceneIds) => onChange({ sceneIds })}
         />
       </div>
-    </li>
+    </div>
   );
 }
