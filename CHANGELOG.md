@@ -10,6 +10,41 @@ ohne passenden Abschnitt bricht der Release-Workflow ab.
 Die Versionierung folgt der üblichen Lesart für 0.x: Die mittlere Zahl steigt
 bei neuen Funktionen, die letzte bei Fehlerbehebungen.
 
+## 0.8.0 — 2026-09-09
+
+### Neu
+
+- **Zeitstrahl mit mehreren Handlungssträngen.** Ein Zeitstrahl war bisher eine
+  einzige Kette von Ereignissen; die meisten Geschichten laufen aber in mehreren
+  Strängen parallel. Jeder Strang trägt jetzt einen Namen und eine Farbe aus der
+  Palette des Binders, jedes Ereignis hängt an einem Strang. Die Ansicht kippt
+  zwischen Spalten (Stränge nebeneinander, die Zeit läuft nach unten) und Zeilen
+  (untereinander, die Zeit läuft nach rechts). Ein Datum gibt es weiterhin
+  bewusst nicht — „Wann?" bleibt Freitext, damit auch erfundene Kalender
+  funktionieren. Bestehende Zeitstrahlen wandern beim Öffnen in den Strang
+  „Haupthandlung".
+- **Slots und Lücken.** Die Karten standen nur in ihrer eigenen Reihenfolge
+  nebeneinander: dass zwei Ereignisse zur selben Zeit passieren, ließ sich nicht
+  zeigen, und dass in einem Strang gerade nichts geschieht, erst recht nicht.
+  Alle Stränge teilen sich jetzt ein Raster aus Slots — gleicher Slot heißt „zur
+  selben Zeit", und ein ausgelassener Slot ist eine gewollte Lücke, die als
+  gestrichelter Rahmen im Bild stehen bleibt. Eine Lücke lässt sich in einen
+  einzelnen Strang einfügen, der sich damit sichtbar gegen die anderen
+  verschiebt, oder über alle Stränge gemeinsam. Gezogen wird auf einen Slot:
+  ein freier nimmt die Karte auf, ein belegter schiebt die dortige Karte und
+  alles danach einen Slot weiter. Die Pfeiltasten rücken slotweise und tauschen
+  nur dann, wenn der Nachbarplatz belegt ist.
+- **Griff an den Ereigniskarten.** Wo man eine Karte anfassen muss, war nicht zu
+  sehen. Jetzt sitzt links in der Kopfzeile ein Griff — und nur er zieht, sodass
+  das Markieren im Text die Karte nicht mehr mitreißt.
+
+### Behoben
+
+- **Am automatischen Zeilenumbruch hing ein Leerzeichen.** Es belegte Breite,
+  statt über den Rand zu hängen: im Blocksatz endete die Zeile sichtbar vor dem
+  rechten Rand, und passte das Leerzeichen nicht mehr in die Zeile, rückte es
+  die nächste ein.
+
 ## 0.7.0 — 2026-09-05
 
 ### Neu
