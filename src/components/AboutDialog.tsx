@@ -1,11 +1,11 @@
-// „Über Gesabbel" — Version, Lizenz und Herkunft an einer Stelle.
+// „Über Distelfink" — Version, Lizenz und Herkunft an einer Stelle.
 import { useEffect, useState } from "react";
 import { getVersion, getTauriVersion } from "@tauri-apps/api/app";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useStore } from "../store";
 import { Icon } from "./Icon";
 
-const REPO = "https://github.com/turbopasi/gesabbel";
+const REPO = "https://github.com/turbopasi/distelfink";
 
 export function AboutOverlay() {
   const open = useStore((s) => s.aboutOpen);
@@ -29,14 +29,14 @@ function AboutDialog() {
     <div className="quicknav-overlay" onMouseDown={() => setAboutOpen(false)}>
       <div className="history about-dialog" onMouseDown={(e) => e.stopPropagation()}>
         <header className="history-header">
-          <h2>Über Gesabbel</h2>
+          <h2>Über Distelfink</h2>
           <span className="spacer" />
           <button className="icon-button" title="Schließen" onClick={() => setAboutOpen(false)}>
             <Icon name="x" size={16} />
           </button>
         </header>
         <div className="about-body">
-          <span className="wordmark-mark" role="img" aria-label="Gesabbel" />
+          <span className="wordmark-mark" role="img" aria-label="Distelfink" />
           <p className="muted">Desktop-Schreibsoftware für Autoren</p>
           <dl className="about-facts">
             <dt>Version</dt>

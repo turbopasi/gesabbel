@@ -274,10 +274,10 @@ button.icon-button.on {
 .wordmark-mark {
   display: block;
   width: min(20rem, 70vw);
-  aspect-ratio: 883 / 161;
+  aspect-ratio: 5045 / 876;
   background: currentColor;
-  -webkit-mask: url("/brand/gesabbel-wordmark.svg") no-repeat center / contain;
-  mask: url("/brand/gesabbel-wordmark.svg") no-repeat center / contain;
+  -webkit-mask: url("/brand/distelfink-wordmark.svg") no-repeat center / contain;
+  mask: url("/brand/distelfink-wordmark.svg") no-repeat center / contain;
 }
 
 .start-screen > p {
@@ -2913,7 +2913,7 @@ li.chapter > .binder-row > .binder-title {
 }
 
 /* --------------------------------------------------------------------------
-   Ueber Gesabbel
+   Ueber Distelfink
    -------------------------------------------------------------------------- */
 
 .about-dialog {

@@ -123,7 +123,7 @@ export function MenuBar() {
       </MenuTitle>
 
       <MenuTitle id="hilfe" label="Hilfe" openMenu={openMenu} setOpenMenu={setOpenMenu}>
-        <Item icon="info" label="Über Gesabbel" onClick={run(() => setAboutOpen(true))} />
+        <Item icon="info" label="Über Distelfink" onClick={run(() => setAboutOpen(true))} />
       </MenuTitle>
 
       {openMenu && <div className="menu-overlay" onMouseDown={() => setOpenMenu(null)} />}

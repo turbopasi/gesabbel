@@ -1,6 +1,6 @@
 # Changelog
 
-Alle nennenswerten Änderungen an Gesabbel, neueste zuerst.
+Alle nennenswerten Änderungen an Distelfink, neueste zuerst.
 
 Der Abschnitt zur jeweiligen Version wird beim Release automatisch in die
 GitHub-Release-Notes übernommen (siehe `.github/workflows/release.yml`). Die
@@ -9,6 +9,23 @@ ohne passenden Abschnitt bricht der Release-Workflow ab.
 
 Die Versionierung folgt der üblichen Lesart für 0.x: Die mittlere Zahl steigt
 bei neuen Funktionen, die letzte bei Fehlerbehebungen.
+
+## 0.9.0 — 2026-09-10
+
+### Geändert
+
+- **Die Anwendung heißt jetzt Distelfink.** Der bisherige Name Gesabbel war als
+  Arbeitstitel gedacht; „Distelfink" ist der volkstümliche Name des Stieglitz
+  und trägt den Vogel- und Österreichbezug, der zum Projekt passen sollte.
+  Umbenannt wurden Fenstertitel, Wortmarke, Repository, Website und alle
+  internen Bezeichner.
+- **Neuer Anwendungs-Identifier** (`io.github.turbopasi.distelfink`). Damit ist
+  Distelfink für das Betriebssystem ein eigenständiges Programm: Bestehende
+  Gesabbel-Installationen erhalten kein Update mehr, bleiben parallel
+  installiert und müssen von Hand deinstalliert werden. Einstellungen und die
+  Liste zuletzt geöffneter Projekte beginnen leer, weil sie am Identifier
+  hängen. **Projekte selbst sind nicht betroffen** — sie liegen unverändert im
+  Dateisystem und lassen sich normal öffnen.
 
 ## 0.8.0 — 2026-09-09
 
@@ -160,7 +177,7 @@ bei neuen Funktionen, die letzte bei Fehlerbehebungen.
   gebaut, damit es Themes und Schriften mitläuft. Unter „Datei" liegen
   Projekt öffnen, die zuletzt geöffneten Projekte als Untermenü,
   Sicherungspunkt, Speichern unter, Exportieren, Projekt schließen und
-  Beenden; unter „Hilfe" ein Dialog „Über Gesabbel" mit Version, Lizenz und
+  Beenden; unter „Hilfe" ein Dialog „Über Distelfink" mit Version, Lizenz und
   Projektadresse. Die Einträge lösen dieselben Aktionen aus wie die Knöpfe in
   der Titelleiste.
 - **„Speichern unter".** Legt eine vollständige Kopie des Projekts an einem

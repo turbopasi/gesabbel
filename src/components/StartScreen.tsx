@@ -45,7 +45,7 @@ export function StartScreen() {
       {/* Wortmarke als CSS-Maske: die Fläche erbt currentColor und läuft
           dadurch in allen Themes mit, statt zwei Farbvarianten zu pflegen. */}
       <h1 className="wordmark">
-        <span className="wordmark-mark" role="img" aria-label="Gesabbel" />
+        <span className="wordmark-mark" role="img" aria-label="Distelfink" />
       </h1>
       <p className="muted">Desktop-Schreibsoftware für Autoren</p>
 

@@ -1,6 +1,6 @@
 # Hinweise zu Bestandteilen Dritter
 
-Gesabbel selbst steht unter der Apache-Lizenz 2.0 (siehe `LICENSE`).
+Distelfink selbst steht unter der Apache-Lizenz 2.0 (siehe `LICENSE`).
 Die ausgelieferte Anwendung enthält darüber hinaus Bestandteile Dritter. Deren
 Lizenzen verlangen, dass Copyright- und Lizenzhinweis der Weitergabe beiliegen —
 genau dazu dient diese Datei.

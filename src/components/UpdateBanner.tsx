@@ -79,7 +79,7 @@ export function UpdateBanner({ floating = false }: { floating?: boolean }) {
     return (
       <div className={cls("info")}>
         <span>
-          <strong>Version {update.version}</strong> ist installiert. Gesabbel startet neu…
+          <strong>Version {update.version}</strong> ist installiert. Distelfink startet neu…
         </span>
       </div>
     );

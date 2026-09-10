@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    gesabbel_lib::run()
+    distelfink_lib::run()
 }

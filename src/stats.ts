@@ -87,7 +87,7 @@ export function formatNorm(n: number): string {
   return n.toLocaleString("de-DE", { maximumFractionDigits: 1 });
 }
 
-const NORM_KEY = "gesabbel.normVariant";
+const NORM_KEY = "distelfink.normVariant";
 
 export function loadNormVariant(): NormVariant {
   return localStorage.getItem(NORM_KEY) === "30x60" ? "30x60" : "1800";

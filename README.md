@@ -1,6 +1,6 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/brand/gesabbel-wordmark-on-dark.svg">
-  <img src="public/brand/gesabbel-wordmark.svg" alt="Gesabbel" width="320">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/brand/distelfink-wordmark-on-dark.svg">
+  <img src="public/brand/distelfink-wordmark.svg" alt="Distelfink" width="320">
 </picture>
 
 Desktop-Schreibsoftware für Autoren, gebaut mit Tauri 2.x (React + TypeScript + Vite).
@@ -15,11 +15,11 @@ flexiblen Export in einer Anwendung zusammen.
 sinnvolles Git-Diffing. SQLite dient nur als regenerierbarer Such-/Index-Cache
 (`.cache/index.sqlite`, nicht versioniert).
 
-**Website:** <https://turbopasi.github.io/gesabbel/>
+**Website:** <https://turbopasi.github.io/distelfink/>
 
 ## Installation
 
-**[Aktuelle Version herunterladen](https://github.com/turbopasi/gesabbel/releases/latest)**
+**[Aktuelle Version herunterladen](https://github.com/turbopasi/distelfink/releases/latest)**
 — unter „Assets" das Windows-Setup (`.exe`) oder alternativ das `.msi`-Paket.
 Linux- und macOS-Builds folgen, sobald sie dort getestet werden können.
 

@@ -880,6 +880,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "distelfink"
+version = "0.9.0"
+dependencies = [
+ "base64 0.22.1",
+ "chrono",
+ "docx-rs",
+ "epub-builder",
+ "genpdf",
+ "git2",
+ "pulldown-cmark",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-opener",
+ "tauri-plugin-process",
+ "tauri-plugin-updater",
+ "uuid",
+]
+
+[[package]]
 name = "dlopen2"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1496,29 +1519,6 @@ dependencies = [
  "lopdf",
  "printpdf",
  "rusttype",
-]
-
-[[package]]
-name = "gesabbel"
-version = "0.8.0"
-dependencies = [
- "base64 0.22.1",
- "chrono",
- "docx-rs",
- "epub-builder",
- "genpdf",
- "git2",
- "pulldown-cmark",
- "rusqlite",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-opener",
- "tauri-plugin-process",
- "tauri-plugin-updater",
- "uuid",
 ]
 
 [[package]]

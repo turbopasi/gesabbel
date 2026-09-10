@@ -78,10 +78,10 @@ export interface Pane {
 }
 
 const AUTOSAVE_MS = 2000;
-const RECENTS_KEY = "gesabbel.recents";
-const COLLAPSED_KEY = "gesabbel.collapsed";
-const TYPEWRITER_KEY = "gesabbel.typewriter";
-const FLOW_KEY = "gesabbel.flowMode";
+const RECENTS_KEY = "distelfink.recents";
+const COLLAPSED_KEY = "distelfink.collapsed";
+const TYPEWRITER_KEY = "distelfink.typewriter";
+const FLOW_KEY = "distelfink.flowMode";
 
 const emptyPane = (): Pane => ({
   sceneId: null,
